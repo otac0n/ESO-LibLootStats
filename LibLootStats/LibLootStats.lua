@@ -11,6 +11,8 @@ function LibLootStats:Initialize()
   LibLootStats:InitializeSettings()
   LibLootStats:InitializeHooks()
   LibLootStats.settingsMenu = LibLootStatsSettingsMenu:New()
+
+  LibLootStats:OnInventoryFullUpdate()
 end
 
 function LibLootStats:InitializeHooks()
