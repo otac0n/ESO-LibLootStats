@@ -1,20 +1,20 @@
-﻿EVENT_MANAGER:RegisterForEvent(LibContainerStats.ADDON_NAME, EVENT_ADD_ON_LOADED, function (eventCode, name)
-  if name ~= LibContainerStats.ADDON_NAME then return end
-  LibContainerStats:Initialize()
-  EVENT_MANAGER:UnregisterForEvent(LibContainerStats.ADDON_NAME, EVENT_ADD_ON_LOADED)
+﻿EVENT_MANAGER:RegisterForEvent(LibLootStats.ADDON_NAME, EVENT_ADD_ON_LOADED, function (eventCode, name)
+  if name ~= LibLootStats.ADDON_NAME then return end
+  LibLootStats:Initialize()
+  EVENT_MANAGER:UnregisterForEvent(LibLootStats.ADDON_NAME, EVENT_ADD_ON_LOADED)
 end)
 
 local logger
-function LibContainerStats:Initialize()
-  logger = LibDebugLogger(LibContainerStats.ADDON_NAME)
+function LibLootStats:Initialize()
+  logger = LibDebugLogger(LibLootStats.ADDON_NAME)
   logger:SetMinLevelOverride(LibDebugLogger.LOG_LEVEL_VERBOSE)
-  LibContainerStats:InitializeSettings()
-  LibContainerStats:InitializeHooks()
-  LibContainerStats.settingsMenu = LibContainerStatsSettingsMenu:New()
+  LibLootStats:InitializeSettings()
+  LibLootStats:InitializeHooks()
+  LibLootStats.settingsMenu = LibLootStatsSettingsMenu:New()
 end
 
-function LibContainerStats:InitializeHooks()
-  local namespace = LibContainerStats.ADDON_NAME
+function LibLootStats:InitializeHooks()
+  local namespace = LibLootStats.ADDON_NAME
   EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_ITEM_DESTROYED, self.OnInventoryItemDestroyed)
   EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_ITEM_USED, self.OnInventoryItemUsed)
   EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_FULL_UPDATE, self.OnInventoryFullUpdate)
@@ -27,13 +27,13 @@ function LibContainerStats:InitializeHooks()
   ZO_PreHook(ZO_InteractionManager, "SelectChatterOptionByIndex", self.OnSelectChatterOptionByIndex)
   for i = 1, ZO_InteractWindowPlayerAreaOptions:GetNumChildren() do
     local option = ZO_InteractWindowPlayerAreaOptions:GetChild(i)
-    ZO_PreHookHandler(option, "OnMouseUp", function (...) LibContainerStats:OnChatterOptionMouseUp(option, ...) end)
+    ZO_PreHookHandler(option, "OnMouseUp", function (...) LibLootStats:OnChatterOptionMouseUp(option, ...) end)
   end
 end
 
 local reticleActive = false
 local lastInteraction, lastInteractable, lastInteractInfo, lastFishingLure, lastSocialClass
-function LibContainerStats:OnReticleEffectivelyShown()
+function LibLootStats:OnReticleEffectivelyShown()
   reticleActive = true
   local interaction, interactableName, interactionBlocked, isOwned, additionalInteractInfo, context, contextLink, isCriminalInteract = GetGameCameraInteractableActionInfo()
 
@@ -61,12 +61,12 @@ function LibContainerStats:OnReticleEffectivelyShown()
   end
 end
 
-function LibContainerStats:OnReticleHide()
+function LibLootStats:OnReticleHide()
   reticleActive = false
 end
 
 local currentScene, inHud
-function LibContainerStats:OnSceneStateChanged()
+function LibLootStats:OnSceneStateChanged()
   local scene = SCENE_MANAGER:GetCurrentScene()
   if currentScene ~= scene.name then
     currentScene = scene.name
@@ -83,15 +83,15 @@ function LibContainerStats:OnSceneStateChanged()
   end
 end
 
-function LibContainerStats:OnChatterOptionMouseUp(option)
+function LibLootStats:OnChatterOptionMouseUp(option)
   lastInteraction = option:GetText()
 end
 
-function LibContainerStats:OnSelectChatterOptionByIndex(index)
+function LibLootStats:OnSelectChatterOptionByIndex(index)
   lastInteraction = ZO_InteractWindowPlayerAreaOptions:GetChild(index):GetText()
 end
 
-function LibContainerStats:GetContext()
+function LibLootStats:GetContext()
   local context = {}
   local interactable = lastInteractable
 
@@ -108,7 +108,7 @@ function LibContainerStats:GetContext()
   return interactable, lastInteraction, context
 end
 
-function LibContainerStats:OnMailOpenMailbox(eventCode)
+function LibLootStats:OnMailOpenMailbox(eventCode)
 end
 
 local inventorySnapshot = {}
@@ -116,7 +116,7 @@ for i = BAG_ITERATION_BEGIN, BAG_ITERATION_END do
   inventorySnapshot[i] = {}
 end
 
-function LibContainerStats:OnInventoryFullUpdate(bagId, slotId, isNewItem, soundCategory, reason)
+function LibLootStats:OnInventoryFullUpdate(bagId, slotId, isNewItem, soundCategory, reason)
   for i = BAG_ITERATION_BEGIN, BAG_ITERATION_END do
     for slotId = 1, GetBagSize(i) do
       inventorySnapshot[i][slotId] = GetItemLink(i, slotId)
@@ -125,12 +125,12 @@ function LibContainerStats:OnInventoryFullUpdate(bagId, slotId, isNewItem, sound
 end
 
 local nextRemovalIsUse
-function LibContainerStats:OnInventorySingleSlotUpdate(bagId, slotId, isNewItem, itemSoundCategory, updateReason, stackCountChange)
+function LibLootStats:OnInventorySingleSlotUpdate(bagId, slotId, isNewItem, itemSoundCategory, updateReason, stackCountChange)
   if isNewItem then
-    local source, action, context = LibContainerStats:GetContext()
+    local source, action, context = LibLootStats:GetContext()
     local itemLink = GetItemLink(bagId, slotId)
     inventorySnapshot[bagId][slotId] = itemLink
-    LibContainerStats:AddOutcome(source, action, context, itemLink, stackCountChange)
+    LibLootStats:AddOutcome(source, action, context, itemLink, stackCountChange)
   else
     if stackCountChange < 0 then
       local itemLink = inventorySnapshot[bagId][slotId]
@@ -143,17 +143,17 @@ function LibContainerStats:OnInventorySingleSlotUpdate(bagId, slotId, isNewItem,
   end
 end
 
-function LibContainerStats:OnInventoryItemUsed(eventCode, itemSoundCategory)
+function LibLootStats:OnInventoryItemUsed(eventCode, itemSoundCategory)
   nextRemovalIsUse = true
 end
 
-function LibContainerStats:OnInventoryItemDestroyed(eventCode, itemSoundCategory)
+function LibLootStats:OnInventoryItemDestroyed(eventCode, itemSoundCategory)
 end
 
-function LibContainerStats:OnUpdateLootWindow(containerName, actionName, isOwned)
+function LibLootStats:OnUpdateLootWindow(containerName, actionName, isOwned)
   local source, action, context
   if inHud then
-    source, action, context = LibContainerStats:GetContext()
+    source, action, context = LibLootStats:GetContext()
   else
     source = containerName
   end
@@ -172,7 +172,7 @@ function LibContainerStats:OnUpdateLootWindow(containerName, actionName, isOwned
       isStolen = isStolen,
       lootType = lootType,
     }
-    LibContainerStats:AddOutcome(source, action, context, name, count)
+    LibLootStats:AddOutcome(source, action, context, name, count)
   end
 end
 
@@ -183,8 +183,8 @@ local ignoredScenes = {
   [ALCHEMY_SCENE.name] = true,
 }
 
-LibContainerStats.data = {}
-function LibContainerStats:AddOutcome(source, action, context, item, count)
+LibLootStats.data = {}
+function LibLootStats:AddOutcome(source, action, context, item, count)
   local result
   if count == 1 then
     result = item

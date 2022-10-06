@@ -4,17 +4,17 @@
 ; States and/or other countries. All rights reserved.
 ; You can read the full terms at https://account.elderscrollsonline.com/add-on-terms
 
-## Title: LibContainerStats
+## Title: LibLootStats
 ## APIVersion: 101035
 ## Version: 1.0
-## SavedVariables: LibContainerStats_Settings
+## SavedVariables: LibLootStats_Settings
 ## Author: otac0n
-## Description: Lets you hear fish on the line.
+## Description: Collect stats about containers and nodes that you use.
 ## OptionalDependsOn:
 ## DependsOn: LibSavedVars LibAddonMenu-2.0>=32
 
-LibContainerStats_Shared.lua
-LibContainerStats_Strings.lua
-LibContainerStats_Settings.lua
-LibContainerStats_SettingsMenu.lua
-LibContainerStats.lua
+LibLootStats_Shared.lua
+LibLootStats_Strings.lua
+LibLootStats_Settings.lua
+LibLootStats_SettingsMenu.lua
+LibLootStats.lua

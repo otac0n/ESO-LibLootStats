@@ -4,7 +4,7 @@ local localizedStrings = {
   },
 }
 
-function LibContainerStats:GetStrings()
+function LibLootStats:GetStrings()
   local lang = GetCVar("language.2")
   return localizedStrings[lang]
 end
