@@ -19,7 +19,6 @@ function LibLootStats:InitializeHooks()
   EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_ITEM_USED, self.OnInventoryItemUsed)
   EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_FULL_UPDATE, self.OnInventoryFullUpdate)
   EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_SINGLE_SLOT_UPDATE, self.OnInventorySingleSlotUpdate)
-  EVENT_MANAGER:RegisterForEvent(namespace, EVENT_MAIL_OPEN_MAILBOX , self.OnMailOpenMailbox)
   ZO_PreHook(SCENE_MANAGER, "OnSceneStateChange", self.OnSceneStateChanged)
   ZO_PreHookHandler(RETICLE.interact, "OnEffectivelyShown", self.OnReticleEffectivelyShown)
   ZO_PreHookHandler(RETICLE.interact, "OnHide", self.OnReticleHide)
@@ -106,9 +105,6 @@ function LibLootStats:GetContext()
   context.zoneId = GetZoneId(GetUnitZoneIndex("player"))
 
   return interactable, lastInteraction, context
-end
-
-function LibLootStats:OnMailOpenMailbox(eventCode)
 end
 
 local inventorySnapshot = {}
