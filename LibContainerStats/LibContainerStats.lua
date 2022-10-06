@@ -4,7 +4,10 @@
   EVENT_MANAGER:UnregisterForEvent(LibContainerStats.ADDON_NAME, EVENT_ADD_ON_LOADED)
 end)
 
+local logger
 function LibContainerStats:Initialize()
+  logger = LibDebugLogger(LibContainerStats.ADDON_NAME)
+  logger:SetMinLevelOverride(LibDebugLogger.LOG_LEVEL_VERBOSE)
   LibContainerStats:InitializeSettings()
   LibContainerStats:InitializeHooks()
   LibContainerStats.settingsMenu = LibContainerStatsSettingsMenu:New()
