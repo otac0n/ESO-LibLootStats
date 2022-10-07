@@ -217,7 +217,6 @@ local ignoredScenes = {
   [ALCHEMY_SCENE.name] = true,
 }
 
-LibLootStats.data = {}
 local outcomeGroup, extendLifetime = nil, false
 function LibLootStats:InitializeOutcomeGroup(source, action)
   EVENT_MANAGER:UnregisterForUpdate(LibLootStats.ADDON_NAME .. "CollectOutcomeGroup")
@@ -260,7 +259,6 @@ function LibLootStats:CollectOutcomeGroup()
       logger:Warn("Not saving outcome group with nil action. Source was: ", outcomeGroup.source)
     else
       logger:Debug(outcomeGroup.source, "(", outcomeGroup.action, ")")
-      LibLootStats:SaveOutcomeGroup(outcomeGroup)
       for i = 1, #outcomeGroup do
         local outcome = outcomeGroup[i]
         local item = outcome.item
@@ -274,6 +272,7 @@ function LibLootStats:CollectOutcomeGroup()
 
         logger:Debug("  ->", result)
       end
+      LibLootStats:SaveOutcomeGroup(outcomeGroup)
     end
   end
 
@@ -295,9 +294,43 @@ function LibLootStats:AddOutcome(source, action, context, item, count)
   })
 end
 
+local function MakeLookup(source)
+  local lookup = {
+    forward = {},
+    reverse = source,
+  }
+
+  function lookup:GetId(item)
+    if item == nil then return 0 end
+    local id = self.forward[item]
+    if id == nil then
+      id = #self.reverse + 1
+      self.forward[item] = id
+      self.reverse[id] = item
+    end
+    return id
+  end
+
+  function lookup:GetValue(id)
+    return self.reverse[id]
+  end
+
+  return lookup
+end
+
+LibLootStats.data = {}
+LibLootStats.strings = MakeLookup({})
+
 function LibLootStats:SaveOutcomeGroup(outcomeGroup)
-  local source, action = outcomeGroup.source, outcomeGroup.action
-  outcomeGroup.source, outcomeGroup.action = nil, nil
+  local source = self.strings:GetId(outcomeGroup.source)
+  local action = self.strings:GetId(outcomeGroup.action)
+  local normalized = {}
+
+  for i = 1, #outcomeGroup do
+    local outcome = outcomeGroup[i]
+    local item = self.strings:GetId(outcome.item)
+    table.insert(normalized, { item = item, count = outcome.count, context = outcome.context })
+  end
 
   sourceData = self.data[source]
   if sourceData == nil then
@@ -309,5 +342,5 @@ function LibLootStats:SaveOutcomeGroup(outcomeGroup)
     actionData = {}
     sourceData[action] = actionData
   end
-  table.insert(actionData, outcomeGroup)
+  table.insert(actionData, normalized)
 end
