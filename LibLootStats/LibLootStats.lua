@@ -17,10 +17,15 @@ end
 
 function LibLootStats:InitializeHooks()
   local namespace = LibLootStats.ADDON_NAME
+  function Closure(fn)
+    return function(...) return fn(self, ...) end
+  end
+
   EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_ITEM_DESTROYED, self.OnInventoryItemDestroyed)
   EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_ITEM_USED, self.OnInventoryItemUsed)
   EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_FULL_UPDATE, self.OnInventoryFullUpdate)
   EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_SINGLE_SLOT_UPDATE, self.OnInventorySingleSlotUpdate)
+  ZO_PreHook("ZO_MailInboxShared_TakeAll", Closure(self.OnMailTakeAll))
   ZO_PreHook(SCENE_MANAGER, "OnSceneStateChange", self.OnSceneStateChanged)
   ZO_PreHookHandler(RETICLE.interact, "OnEffectivelyShown", self.OnReticleEffectivelyShown)
   ZO_PreHookHandler(RETICLE.interact, "OnHide", self.OnReticleHide)
@@ -95,6 +100,17 @@ end
 
 function LibLootStats:OnSelectChatterOptionByIndex(index)
   lastInteraction = ZO_InteractWindowPlayerAreaOptions:GetChild(index):GetText()
+end
+
+function LibLootStats:OnMailTakeAll(mailId)
+  local senderDisplayName, senderCharacterName, subject, icon, unread, fromSystem, fromCS, returned, numAttachments, attachedMoney, codAmount, expiresInDays, secsSinceReceived = GetMailItemInfo(mailId)
+  if fromSystem then
+    lastInteraction = GetString(SI_MAIL_READ_ATTACHMENTS_TAKE)
+    lastInteractable = subject
+    lastInteractInfo, lastFishingLure, lastSocialClass = nil, nil, nil
+  else
+    lastInteraction, lastInteractable, lastInteractInfo, lastFishingLure, lastSocialClass = nil, nil, nil, nil, nil
+  end
 end
 
 function LibLootStats:GetContext()
