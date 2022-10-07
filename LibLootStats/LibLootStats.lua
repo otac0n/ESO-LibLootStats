@@ -217,12 +217,36 @@ local ignoredScenes = {
   [ALCHEMY_SCENE.name] = true,
 }
 
+local function ContextsAreEqual(a, b)
+  local keys = {}
+  for k, v in pairs(a) do
+    if v ~= b[k] then return false end
+    keys[k] = true
+  end
+  for k, v in pairs(b) do
+    if not keys[k] or v == nil then return false end
+  end
+  return true
+end
+
+local function ContextToKey(context)
+  local key = ""
+  for k, v in pairs(context) do
+    if key == "" then
+      key = k .. ": " .. tostring(v)
+    else
+      key = key .. ", " .. k .. ": " .. tostring(v)
+    end
+  end
+  return key
+end
+
 local outcomeGroup, extendLifetime = nil, false
-function LibLootStats:InitializeOutcomeGroup(source, action)
+function LibLootStats:InitializeOutcomeGroup(source, action, context)
   EVENT_MANAGER:UnregisterForUpdate(LibLootStats.ADDON_NAME .. "CollectOutcomeGroup")
 
-  if outcomeGroup and (outcomeGroup.source ~= source or outcomeGroup.action ~= action) then
-    logger:Warn("Collecting existing outcome group (", outcomeGroup.source, ",", outcomeGroup.action, ") to create (", source, ",", action, ")")
+  if outcomeGroup and (outcomeGroup.source ~= source or outcomeGroup.action ~= action or not ContextsAreEqual(outcomeGroup.context, context)) then
+    logger:Warn("Collecting existing outcome group (", outcomeGroup.source, ",", outcomeGroup.action, ",", ContextToKey(outcomeGroup.context), ") to create (", source, ",", action, ",", ContextToKey(context), ")")
     LibLootStats:CollectOutcomeGroup()
   end
 
@@ -230,6 +254,7 @@ function LibLootStats:InitializeOutcomeGroup(source, action)
     outcomeGroup = {
       source = source,
       action = action,
+      context = context,
     }
   end
 
@@ -238,13 +263,14 @@ function LibLootStats:InitializeOutcomeGroup(source, action)
   end
 end
 
-function LibLootStats:UpdatePendingOutcomeGroup(source, action)
+function LibLootStats:UpdatePendingOutcomeGroup(source, action, context)
   if outcomeGroup then
-    if outcomeGroup.source == nil and outcomeGroup.action == nil then
+    if outcomeGroup.source == nil and outcomeGroup.action == nil and outcomeGroup.context == nil then
       outcomeGroup.source = source
       outcomeGroup.action = action
+      outcomeGroup.context = context
     else
-      logger:Warn("Not updating the source of a pending outcome group because the source was already know: (", source, ",", action, ") would overwrite (", outcomeGroup.source, ",", outcomeGroup.action, ")")
+      logger:Warn("Not updating the source of a pending outcome group because the source was already know: (", source, ",", action, ",", ContextToKey(context), ") would overwrite (", outcomeGroup.source, ",", outcomeGroup.action, ",", ContextToKey(outcomeGroup.context), ")")
     end
   end
 end
@@ -285,12 +311,11 @@ function LibLootStats:ExtendOutcomeGroupLifetime()
 end
 
 function LibLootStats:AddOutcome(source, action, context, item, count)
-  LibLootStats:InitializeOutcomeGroup(source, action)
+  LibLootStats:InitializeOutcomeGroup(source, action, context)
 
   table.insert(outcomeGroup, {
     item = item,
     count = count,
-    context = context,
   })
 end
 
@@ -324,12 +349,14 @@ LibLootStats.strings = MakeLookup({})
 function LibLootStats:SaveOutcomeGroup(outcomeGroup)
   local source = self.strings:GetId(outcomeGroup.source)
   local action = self.strings:GetId(outcomeGroup.action)
-  local normalized = {}
+  local normalized = {
+    context = outcomeGroup.context
+  }
 
   for i = 1, #outcomeGroup do
     local outcome = outcomeGroup[i]
     local item = self.strings:GetId(outcome.item)
-    table.insert(normalized, { item = item, count = outcome.count, context = outcome.context })
+    table.insert(normalized, { item = item, count = outcome.count })
   end
 
   sourceData = self.data[source]
