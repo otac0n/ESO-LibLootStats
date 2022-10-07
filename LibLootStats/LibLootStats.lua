@@ -26,6 +26,7 @@ function LibLootStats:InitializeHooks()
   EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_FULL_UPDATE, self.OnInventoryFullUpdate)
   EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_SINGLE_SLOT_UPDATE, self.OnInventorySingleSlotUpdate)
   ZO_PreHook("ZO_MailInboxShared_TakeAll", Closure(self.OnMailTakeAll))
+  ZO_PreHook("ClaimCurrentDailyLoginReward", Closure(self.OnClaimCurrentDailyLoginReward))
   ZO_PreHook(SCENE_MANAGER, "OnSceneStateChange", self.OnSceneStateChanged)
   ZO_PreHookHandler(RETICLE.interact, "OnEffectivelyShown", self.OnReticleEffectivelyShown)
   ZO_PreHookHandler(RETICLE.interact, "OnHide", self.OnReticleHide)
@@ -111,6 +112,16 @@ function LibLootStats:OnMailTakeAll(mailId)
   else
     lastInteraction, lastInteractable, lastInteractInfo, lastFishingLure, lastSocialClass = nil, nil, nil, nil, nil
   end
+end
+
+function LibLootStats:OnClaimCurrentDailyLoginReward()
+  local index = GetDailyLoginClaimableRewardIndex()
+  if index == nil then
+    return
+  end
+  lastInteractable = ZO_Daily_Login_Rewards_KeyboardCurrentMonth:GetText()
+  lastInteraction = GetString(SI_DAILY_LOGIN_REWARDS_CLAIM_KEYBIND)
+  lastInteractInfo, lastFishingLure, lastSocialClass = nil, nil, nil
 end
 
 function LibLootStats:GetContext()
