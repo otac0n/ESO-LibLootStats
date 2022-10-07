@@ -70,6 +70,11 @@ local currentScene, inHud
 function LibLootStats:OnSceneStateChanged()
   local scene = SCENE_MANAGER:GetCurrentScene()
   if currentScene ~= scene.name then
+    if currentScene == LOOT_SCENE.name then
+      nextRemovalIsUse = false
+      LibLootStats:CollectOutcomeGroup()
+    end
+
     currentScene = scene.name
     logger:Verbose("Scene changed to: %s", currentScene)
 
@@ -94,19 +99,23 @@ end
 
 function LibLootStats:GetContext()
   local context = {}
-  local interactable = lastInteractable
+  if not nextRemovalIsUse then
+    local interactable, interaction = lastInteractable, lastInteraction
+  
+    if lastInteractInfo == ADDITIONAL_INTERACT_INFO_FISHING_NODE then
+      context.fishingLure = lastFishingLure
+    end
+  
+    if lastInteractInfo == ADDITIONAL_INTERACT_INFO_PICKPOCKET_CHANCE then
+      interactable = lastSocialClass
+    end
 
-  if lastInteractInfo == ADDITIONAL_INTERACT_INFO_FISHING_NODE then
-    context.fishingLure = lastFishingLure
+    context.zoneId = GetZoneId(GetUnitZoneIndex("player"))
+
+    return interactable, interaction, context
+  else
+    return nil, nil, context
   end
-
-  if lastInteractInfo == ADDITIONAL_INTERACT_INFO_PICKPOCKET_CHANCE then
-    interactable = lastSocialClass
-  end
-
-  context.zoneId = GetZoneId(GetUnitZoneIndex("player"))
-
-  return interactable, lastInteraction, context
 end
 
 local inventorySnapshot = {}
@@ -132,9 +141,14 @@ function LibLootStats:OnInventorySingleSlotUpdate(bagId, slotId, isNewItem, item
   else
     if stackCountChange < 0 then
       local itemLink = inventorySnapshot[bagId][slotId]
-      if bagId == BAG_BACKPACK and stackCountChange == -1 and nextRemovalIsUse then
+      if nextRemovalIsUse then
+        if bagId == BAG_BACKPACK and stackCountChange == -1 then
+          LibLootStats:UpdatePendingOutcomeGroup(itemLink, GetString(SI_ITEM_ACTION_USE))
+          LibLootStats:CollectOutcomeGroup()
+        else
+          logger:Warn("Not tracking", GetString(SI_ITEM_ACTION_USE), itemLink, " with the change count ", stackCountChange)
+        end
         nextRemovalIsUse = false
-        LibLootStats:UpdatePendingOutcomeGroup(itemLink, GetString(SI_ITEM_ACTION_USE))
       end
     end
     inventorySnapshot[bagId][slotId] = GetItemLink(bagId, slotId)
@@ -149,13 +163,8 @@ function LibLootStats:OnInventoryItemDestroyed(eventCode, itemSoundCategory)
 end
 
 function LibLootStats:OnUpdateLootWindow(containerName, actionName, isOwned)
-  local source, action, context
-  if inHud then
-    source, action, context = LibLootStats:GetContext()
-  else
-    source = containerName
-  end
-
+  LibLootStats:ExtendOutcomeGroupLifetime()
+  local source, action, context = LibLootStats:GetContext()
   local numLootItems = GetNumLootItems()
   for i = 1, numLootItems do
     local lootId, name, icon, count, displayQuality, value, isQuest, isStolen, lootType = GetLootItemInfo(i)
@@ -182,7 +191,7 @@ local ignoredScenes = {
 }
 
 LibLootStats.data = {}
-local outcomeGroup
+local outcomeGroup, extendLifetime = nil, false
 function LibLootStats:InitializeOutcomeGroup(source, action)
   EVENT_MANAGER:UnregisterForUpdate(LibLootStats.ADDON_NAME .. "CollectOutcomeGroup")
 
@@ -198,7 +207,9 @@ function LibLootStats:InitializeOutcomeGroup(source, action)
     }
   end
 
-  EVENT_MANAGER:RegisterForUpdate(LibLootStats.ADDON_NAME .. "CollectOutcomeGroup", 0, self.CollectOutcomeGroup)
+  if not extendLifetime then
+    EVENT_MANAGER:RegisterForUpdate(LibLootStats.ADDON_NAME .. "CollectOutcomeGroup", 0, self.CollectOutcomeGroup)
+  end
 end
 
 function LibLootStats:UpdatePendingOutcomeGroup(source, action)
@@ -239,15 +250,16 @@ function LibLootStats:CollectOutcomeGroup()
     end
   end
 
-  outcomeGroup = nil
+  outcomeGroup, extendLifetime = nil, false
+end
+
+function LibLootStats:ExtendOutcomeGroupLifetime()
+  EVENT_MANAGER:UnregisterForUpdate(LibLootStats.ADDON_NAME .. "CollectOutcomeGroup")
+  extendLifetime = true
 end
 
 function LibLootStats:AddOutcome(source, action, context, item, count)
-  if nextRemovalIsUse then
-    LibLootStats:InitializeOutcomeGroup(nil, nil)
-  else
-    LibLootStats:InitializeOutcomeGroup(source, action)
-  end
+  LibLootStats:InitializeOutcomeGroup(source, action)
 
   table.insert(outcomeGroup, {
     item = item,
