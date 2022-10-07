@@ -231,11 +231,18 @@ end
 
 local function ContextToKey(context)
   local key = ""
+  local sorted = {}
   for k, v in pairs(context) do
+    table.insert(sorted, { k = k, v = v })
+  end
+  table.sort(sorted, function(a, b) return a.k < b.k end)
+
+  for _, kvp in ipairs(sorted) do
+    local k, v = kvp.k, kvp.v
     if key == "" then
-      key = k .. ": " .. tostring(v)
+      key = k .. ":" .. tostring(v)
     else
-      key = key .. ", " .. k .. ": " .. tostring(v)
+      key = key .. "," .. k .. ":" .. tostring(v)
     end
   end
   return key
@@ -319,21 +326,35 @@ function LibLootStats:AddOutcome(source, action, context, item, count)
   })
 end
 
-local function MakeLookup(source)
+local function MakeLookup(source, toKey)
   local lookup = {
     forward = {},
     reverse = source,
   }
 
-  function lookup:GetId(item)
-    if item == nil then return 0 end
-    local id = self.forward[item]
-    if id == nil then
-      id = #self.reverse + 1
-      self.forward[item] = id
-      self.reverse[id] = item
+  if toKey then
+    function lookup:GetId(item)
+      if item == nil then return 0 end
+      local key = toKey(item)
+      local id = self.forward[key]
+      if id == nil then
+        id = #self.reverse + 1
+        self.forward[key] = id
+        self.reverse[id] = item
+      end
+      return id
     end
-    return id
+  else
+    function lookup:GetId(item)
+      if item == nil then return 0 end
+      local id = self.forward[item]
+      if id == nil then
+        id = #self.reverse + 1
+        self.forward[item] = id
+        self.reverse[id] = item
+      end
+      return id
+    end
   end
 
   function lookup:GetValue(id)
@@ -345,12 +366,13 @@ end
 
 LibLootStats.data = {}
 LibLootStats.strings = MakeLookup({})
+LibLootStats.contexts = MakeLookup({}, ContextToKey)
 
 function LibLootStats:SaveOutcomeGroup(outcomeGroup)
   local source = self.strings:GetId(outcomeGroup.source)
   local action = self.strings:GetId(outcomeGroup.action)
   local normalized = {
-    context = outcomeGroup.context
+    context = self.contexts:GetId(outcomeGroup.context)
   }
 
   for i = 1, #outcomeGroup do
