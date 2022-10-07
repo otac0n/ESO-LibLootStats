@@ -133,8 +133,8 @@ function LibLootStats:OnInventorySingleSlotUpdate(bagId, slotId, isNewItem, item
     if stackCountChange < 0 then
       local itemLink = inventorySnapshot[bagId][slotId]
       if bagId == BAG_BACKPACK and stackCountChange == -1 and nextRemovalIsUse then
-        logger:Debug("Used item was %s", itemLink)
         nextRemovalIsUse = false
+        LibLootStats:UpdatePendingOutcomeGroup(itemLink, GetString(SI_ITEM_ACTION_USE))
       end
     end
     inventorySnapshot[bagId][slotId] = GetItemLink(bagId, slotId)
@@ -170,7 +170,7 @@ function LibLootStats:OnUpdateLootWindow(containerName, actionName, isOwned)
       isStolen = isStolen,
       lootType = lootType,
     }
-    LibLootStats:AddOutcome(source, action, context, name, count)
+    --LibLootStats:AddOutcome(source, action, context, name, count)
   end
 end
 
@@ -182,24 +182,84 @@ local ignoredScenes = {
 }
 
 LibLootStats.data = {}
-function LibLootStats:AddOutcome(source, action, context, item, count)
-  local result
-  if count == 1 then
-    result = item
-  else
-    result = string.format("%s (%d)", item, count)
+local outcomeGroup
+function LibLootStats:InitializeOutcomeGroup(source, action)
+  EVENT_MANAGER:UnregisterForUpdate(LibLootStats.ADDON_NAME .. "CollectOutcomeGroup")
+
+  if outcomeGroup and (outcomeGroup.source ~= source or outcomeGroup.action ~= action) then
+    logger:Warn("Collecting existing outcome group (", outcomeGroup.source, ",", outcomeGroup.action, ") to create (", source, ",", action, ")")
+    LibLootStats:CollectOutcomeGroup()
   end
 
-  if source == nil or action == nil or nextRemovalIsUse then
-    if nextRemovalIsUse then
-      logger:Debug(string.format("Used item -> %s", result))
-    elseif not ignoredScenes[currentScene] then
-      logger:Debug(string.format("No source -> %s", result))
+  if not outcomeGroup then
+    outcomeGroup = {
+      source = source,
+      action = action,
+    }
+  end
+
+  EVENT_MANAGER:RegisterForUpdate(LibLootStats.ADDON_NAME .. "CollectOutcomeGroup", 0, self.CollectOutcomeGroup)
+end
+
+function LibLootStats:UpdatePendingOutcomeGroup(source, action)
+  if outcomeGroup then
+    if outcomeGroup.source == nil and outcomeGroup.action == nil then
+      outcomeGroup.source = source
+      outcomeGroup.action = action
+    else
+      logger:Warn("Not updating the source of a pending outcome group because the source was already know: (", source, ",", action, ") would overwrite (", outcomeGroup.source, ",", outcomeGroup.action, ")")
     end
-    return
+  end
+end
+
+function LibLootStats:CollectOutcomeGroup()
+  EVENT_MANAGER:UnregisterForUpdate(LibLootStats.ADDON_NAME .. "CollectOutcomeGroup")
+
+  if outcomeGroup ~= nil then
+    if outcomeGroup.source == nil then
+      logger:Warn("Not saving outcome group with nil source.")
+    elseif outcomeGroup.action == nil then
+      logger:Warn("Not saving outcome group with nil action. Source was: ", outcomeGroup.source)
+    else
+      logger:Debug(outcomeGroup.source, "(", outcomeGroup.action, ")")
+      LibLootStats:SaveOutcomeGroup(outcomeGroup)
+      for i = 1, #outcomeGroup do
+        local outcome = outcomeGroup[i]
+        local item = outcome.item
+        local count = outcome.count
+        local result
+        if count == 1 then
+          result = item
+        else
+          result = string.format("%s (%d)", item, count)
+        end
+
+        logger:Debug("  ->", result)
+      end
+    end
   end
 
-  logger:Debug(string.format("%s (%s) -> %s", source, action, result))
+  outcomeGroup = nil
+end
+
+function LibLootStats:AddOutcome(source, action, context, item, count)
+  if nextRemovalIsUse then
+    LibLootStats:InitializeOutcomeGroup(nil, nil)
+  else
+    LibLootStats:InitializeOutcomeGroup(source, action)
+  end
+
+  table.insert(outcomeGroup, {
+    item = item,
+    count = count,
+    context = context,
+  })
+end
+
+function LibLootStats:SaveOutcomeGroup(outcomeGroup)
+  local source, action = outcomeGroup.source, outcomeGroup.action
+  outcomeGroup.source, outcomeGroup.action = nil, nil
+
   sourceData = self.data[source]
   if sourceData == nil then
     sourceData = {}
@@ -210,10 +270,5 @@ function LibLootStats:AddOutcome(source, action, context, item, count)
     actionData = {}
     sourceData[action] = actionData
   end
-  itemData = actionData[item]
-  if itemData == nil then
-    itemData = {}
-    actionData[item] = itemData
-  end
-  table.insert(itemData, { count = count, context = context })
+  table.insert(actionData, outcomeGroup)
 end
