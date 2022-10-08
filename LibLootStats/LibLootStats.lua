@@ -396,12 +396,12 @@ function LibLootStats:SaveOutcomeGroup(outcomeGroup)
 
   local outcome = self.data.outcomes:GetId(normalized)
 
-  local scenario = self.data.scenarios:GetId({
+  local scenario = ScenarioToKey({
     source = source,
     action = action,
     context = context,
     outcome = outcome,
   })
-  local saved = self.data.scenarios:GetValue(scenario)
-  saved.count = saved.count and (saved.count + 1) or 1
+  local saved = self.data.scenarios[scenario]
+  self.data.scenarios[scenario] = saved and (saved + 1) or 1
 end

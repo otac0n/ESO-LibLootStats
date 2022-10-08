@@ -3,28 +3,50 @@ LibLootStats.variableVersion = 1
 local defaultCollectionVars = {
 }
 
-local function MakeLookup(source, toKey)
+local function MakeLookup(source, toKey, fromKey)
   local lookup = {
     itemToId = {},
     idToItem = source,
   }
 
   if toKey then
-    for id, item in ipairs(source) do
-      local key = toKey(item)
-      lookup.itemToId[key] = id
-    end
-
-    function lookup:GetId(item)
-      if item == nil then return 0 end
-      local key = toKey(item)
-      local id = self.itemToId[key]
-      if id == nil then
-        id = #self.idToItem + 1
-        self.itemToId[key] = id
-        self.idToItem[id] = item
+    if fromKey then
+      lookup.idToItem = {}
+      for id, key in ipairs(source) do
+        local item = fromKey(key)
+        lookup.itemToId[key] = id
+        lookup.idToItem[id] = item
       end
-      return id
+  
+      function lookup:GetId(item)
+        if item == nil then return 0 end
+        local key = toKey(item)
+        local id = self.itemToId[key]
+        if id == nil then
+          id = #self.idToItem + 1
+          self.itemToId[key] = id
+          self.idToItem[id] = item
+          source[id] = key
+        end
+        return id
+      end
+    else
+      for id, item in ipairs(source) do
+        local key = toKey(item)
+        lookup.itemToId[key] = id
+      end
+  
+      function lookup:GetId(item)
+        if item == nil then return 0 end
+        local key = toKey(item)
+        local id = self.itemToId[key]
+        if id == nil then
+          id = #self.idToItem + 1
+          self.itemToId[key] = id
+          self.idToItem[id] = item
+        end
+        return id
+      end
     end
   else
     for id, item in ipairs(source) do
@@ -58,11 +80,11 @@ function LibLootStats:InitializeSettings()
   local strings = ZO_SavedVars:NewAccountWide(LibLootStats.ADDON_NAME.."_Strings", 1, nil, { lookup = {} })
   local contexts = ZO_SavedVars:NewAccountWide(LibLootStats.ADDON_NAME.."_Contexts", 1, nil, { lookup = {} })
   local outcomes = ZO_SavedVars:NewAccountWide(LibLootStats.ADDON_NAME.."_Outcomes", 1, nil, { lookup = {} })
-  local scenarios = ZO_SavedVars:NewAccountWide(LibLootStats.ADDON_NAME.."_Scenarios", 1, nil, { lookup = {} })
+  local scenarios = ZO_SavedVars:NewAccountWide(LibLootStats.ADDON_NAME.."_Scenarios", 1, nil, { data = {} })
   self.data = {
     strings = MakeLookup(strings.lookup),
-    contexts = MakeLookup(contexts.lookup, self.ContextToKey),
-    outcomes = MakeLookup(outcomes.lookup, self.OutcomeToKey),
-    scenarios = MakeLookup(scenarios.lookup, self.ScenarioToKey),
+    contexts = MakeLookup(contexts.lookup, self.ContextToKey, self.ParseContextKey),
+    outcomes = MakeLookup(outcomes.lookup, self.OutcomeToKey, self.ParseOutcomeKey),
+    scenarios = scenarios.data
   }
 end
