@@ -123,17 +123,41 @@ function LibLootStats:OnClaimCurrentDailyLoginReward()
   lastInteractInfo, lastFishingLure, lastSocialClass = nil, nil, nil
 end
 
+local function SkillPointLevel(skillPointId)
+  for i = 1, 4 do
+    if GetSlotBoundId(i, HOTBAR_CATEGORY_CHAMPION) == skillPointId then
+      local spent = GetNumPointsSpentOnChampionSkill(skillPointId)
+      if DoesChampionSkillHaveJumpPoints(skillPointId) then
+        local points, level = {GetChampionSkillJumpPoints(skillPointId)}, 0
+        for i, threshold in ipairs(points) do
+          if threshold == spent then return level
+          elseif threshold > spent then return level - 1
+          end
+          level = i
+        end
+        return nil
+      else
+        return spent
+      end
+    end
+  end
+end
+
 function LibLootStats:GetContext()
   local context = {}
   if not nextRemovalIsUse then
     local interactable, interaction = lastInteractable, lastInteraction
   
     if lastInteractInfo == ADDITIONAL_INTERACT_INFO_FISHING_NODE then
-      context.fishingLure = lastFishingLure
-    end
-  
-    if lastInteractInfo == ADDITIONAL_INTERACT_INFO_PICKPOCKET_CHANCE then
+      context.lure = lastFishingLure
+      context.angler = SkillPointLevel(89)
+    elseif lastInteractInfo == ADDITIONAL_INTERACT_INFO_PICKPOCKET_CHANCE then
       interactable = lastSocialClass
+      context.cutpurse = SkillPointLevel(90)
+    else
+      context.harvest = SkillPointLevel(81)
+      context.homemaker = SkillPointLevel(91)
+      context.hunter = SkillPointLevel(79)
     end
 
     context.zoneId = GetZoneId(GetUnitZoneIndex("player"))
