@@ -247,6 +247,25 @@ local function ContextToKey(context)
   end
   return key
 end
+LibLootStats.ContextToKey = ContextToKey
+
+local function OutcomeToKey(outcome)
+  local key = ""
+  for _, p in ipairs(outcome) do
+    if key == "" then
+      key = tostring(p.item) .. "*" .. tostring(p.count)
+    else
+      key = key .. "+" .. tostring(p.item) .. "*" .. tostring(p.count)
+    end
+  end
+  return key
+end
+LibLootStats.OutcomeToKey = OutcomeToKey
+
+local function ScenarioToKey(scenario)
+  return tostring(scenario.source) .. "/" .. tostring(scenario.action) .. "@" .. tostring(scenario.context) .. ">" .. tostring(scenario.outcome)
+end
+LibLootStats.ScenarioToKey = ScenarioToKey
 
 local outcomeGroup, extendLifetime = nil, false
 function LibLootStats:InitializeOutcomeGroup(source, action, context)
@@ -326,70 +345,27 @@ function LibLootStats:AddOutcome(source, action, context, item, count)
   })
 end
 
-local function MakeLookup(source, toKey)
-  local lookup = {
-    forward = {},
-    reverse = source,
-  }
-
-  if toKey then
-    function lookup:GetId(item)
-      if item == nil then return 0 end
-      local key = toKey(item)
-      local id = self.forward[key]
-      if id == nil then
-        id = #self.reverse + 1
-        self.forward[key] = id
-        self.reverse[id] = item
-      end
-      return id
-    end
-  else
-    function lookup:GetId(item)
-      if item == nil then return 0 end
-      local id = self.forward[item]
-      if id == nil then
-        id = #self.reverse + 1
-        self.forward[item] = id
-        self.reverse[id] = item
-      end
-      return id
-    end
-  end
-
-  function lookup:GetValue(id)
-    return self.reverse[id]
-  end
-
-  return lookup
-end
-
-LibLootStats.data = {}
-LibLootStats.strings = MakeLookup({})
-LibLootStats.contexts = MakeLookup({}, ContextToKey)
-
 function LibLootStats:SaveOutcomeGroup(outcomeGroup)
-  local source = self.strings:GetId(outcomeGroup.source)
-  local action = self.strings:GetId(outcomeGroup.action)
-  local normalized = {
-    context = self.contexts:GetId(outcomeGroup.context)
-  }
+  local source = self.data.strings:GetId(outcomeGroup.source)
+  local action = self.data.strings:GetId(outcomeGroup.action)
+  local context = self.data.contexts:GetId(outcomeGroup.context)
 
+  local normalized = {}
   for i = 1, #outcomeGroup do
     local outcome = outcomeGroup[i]
-    local item = self.strings:GetId(outcome.item)
+    local item = self.data.strings:GetId(outcome.item)
     table.insert(normalized, { item = item, count = outcome.count })
   end
+  table.sort(normalized, function(a, b) return a.item < b.item end)
 
-  sourceData = self.data[source]
-  if sourceData == nil then
-    sourceData = {}
-    self.data[source] = sourceData
-  end
-  actionData = sourceData[action]
-  if actionData == nil then
-    actionData = {}
-    sourceData[action] = actionData
-  end
-  table.insert(actionData, normalized)
+  local outcome = self.data.outcomes:GetId(normalized)
+
+  local scenario = self.data.scenarios:GetId({
+    source = source,
+    action = action,
+    context = context,
+    outcome = outcome,
+  })
+  local saved = self.data.scenarios:GetValue(scenario)
+  saved.count = saved.count and (saved.count + 1) or 1
 end

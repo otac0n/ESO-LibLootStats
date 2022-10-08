@@ -7,7 +7,7 @@
 ## Title: LibLootStats
 ## APIVersion: 101035
 ## Version: 1.0
-## SavedVariables: LibLootStats_Settings
+## SavedVariables: LibLootStats_Settings LibLootStats_Strings LibLootStats_Outcomes LibLootStats_Contexts LibLootStats_Scenarios
 ## Author: otac0n
 ## Description: Collect stats about containers and nodes that you use.
 ## OptionalDependsOn:
