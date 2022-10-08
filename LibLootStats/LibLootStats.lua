@@ -4,12 +4,10 @@
   EVENT_MANAGER:UnregisterForEvent(LibLootStats.ADDON_NAME, EVENT_ADD_ON_LOADED)
 end)
 
-local function Bind(fn) return function(...) return fn(LibLootStats, ...) end end
-local function Closure(fn) return function(_, ...) return fn(LibLootStats, ...) end end  
-
 local logger
 function LibLootStats:Initialize()
   logger = LibDebugLogger(LibLootStats.ADDON_NAME)
+  LibLootStats.logger = logger
   logger:SetMinLevelOverride(LibDebugLogger.LOG_LEVEL_VERBOSE)
   LibLootStats:InitializeSettings()
   LibLootStats:InitializeHooks()
@@ -20,17 +18,17 @@ end
 
 function LibLootStats:InitializeHooks()
   local namespace = LibLootStats.ADDON_NAME
-  EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_ITEM_DESTROYED, Bind(self.OnInventoryItemDestroyed))
-  EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_ITEM_USED, Bind(self.OnInventoryItemUsed))
-  EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_FULL_UPDATE, Bind(self.OnInventoryFullUpdate))
-  EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_SINGLE_SLOT_UPDATE, Bind(self.OnInventorySingleSlotUpdate))
-  ZO_PreHook("ZO_MailInboxShared_TakeAll", Bind(self.OnMailTakeAll))
-  ZO_PreHook("ClaimCurrentDailyLoginReward", Bind(self.OnClaimCurrentDailyLoginReward))
-  ZO_PreHook(SCENE_MANAGER, "OnSceneStateChange", Closure(self.OnSceneStateChanged))
-  ZO_PreHookHandler(RETICLE.interact, "OnEffectivelyShown", Closure(self.OnReticleEffectivelyShown))
-  ZO_PreHookHandler(RETICLE.interact, "OnHide", Closure(self.OnReticleHide))
-  ZO_PreHook(SYSTEMS:GetObject("loot"), "UpdateLootWindow", Closure(self.OnUpdateLootWindow))
-  ZO_PreHook(ZO_InteractionManager, "SelectChatterOptionByIndex", Closure(self.OnSelectChatterOptionByIndex))
+  EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_ITEM_DESTROYED, self.utils.Bind(self, self.OnInventoryItemDestroyed))
+  EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_ITEM_USED, self.utils.Bind(self, self.OnInventoryItemUsed))
+  EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_FULL_UPDATE, self.utils.Bind(self, self.OnInventoryFullUpdate))
+  EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_SINGLE_SLOT_UPDATE, self.utils.Bind(self, self.OnInventorySingleSlotUpdate))
+  ZO_PreHook("ZO_MailInboxShared_TakeAll", self.utils.Bind(self, self.OnMailTakeAll))
+  ZO_PreHook("ClaimCurrentDailyLoginReward", self.utils.Bind(self, self.OnClaimCurrentDailyLoginReward))
+  ZO_PreHook(SCENE_MANAGER, "OnSceneStateChange", self.utils.Closure(self, self.OnSceneStateChanged))
+  ZO_PreHookHandler(RETICLE.interact, "OnEffectivelyShown", self.utils.Closure(self, self.OnReticleEffectivelyShown))
+  ZO_PreHookHandler(RETICLE.interact, "OnHide", self.utils.Closure(self, self.OnReticleHide))
+  ZO_PreHook(SYSTEMS:GetObject("loot"), "UpdateLootWindow", self.utils.Closure(self, self.OnUpdateLootWindow))
+  ZO_PreHook(ZO_InteractionManager, "SelectChatterOptionByIndex", self.utils.Closure(self, self.OnSelectChatterOptionByIndex))
   for i = 1, ZO_InteractWindowPlayerAreaOptions:GetNumChildren() do
     local option = ZO_InteractWindowPlayerAreaOptions:GetChild(i)
     ZO_PreHookHandler(option, "OnMouseUp", function(...) self:OnChatterOptionMouseUp(option, ...) end)

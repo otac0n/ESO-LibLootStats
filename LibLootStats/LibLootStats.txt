@@ -14,6 +14,7 @@
 ## DependsOn: LibSavedVars LibAddonMenu-2.0>=32
 
 LibLootStats_Shared.lua
+LibLootStats_Utils.lua
 LibLootStats_Strings.lua
 LibLootStats_Settings.lua
 LibLootStats_SettingsMenu.lua
