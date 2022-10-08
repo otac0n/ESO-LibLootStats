@@ -5,48 +5,46 @@ local defaultCollectionVars = {
 
 local function MakeLookup(source, toKey)
   local lookup = {
-    forward = {},
-    reverse = source,
+    itemToId = {},
+    idToItem = source,
   }
 
   if toKey then
-    for k, v in ipairs(source) do
-      local key = toKey(v)
-      lookup.forward[key] = k
-      lookup.reverse[k] = v
+    for id, item in ipairs(source) do
+      local key = toKey(item)
+      lookup.itemToId[key] = id
     end
 
     function lookup:GetId(item)
       if item == nil then return 0 end
       local key = toKey(item)
-      local id = self.forward[key]
+      local id = self.itemToId[key]
       if id == nil then
-        id = #self.reverse + 1
-        self.forward[key] = id
-        self.reverse[id] = item
+        id = #self.idToItem + 1
+        self.itemToId[key] = id
+        self.idToItem[id] = item
       end
       return id
     end
   else
-    for k, v in ipairs(source) do
-      lookup.forward[v] = k
-      lookup.reverse[k] = v
+    for id, item in ipairs(source) do
+      lookup.itemToId[item] = id
     end
 
     function lookup:GetId(item)
       if item == nil then return 0 end
-      local id = self.forward[item]
+      local id = self.itemToId[item]
       if id == nil then
-        id = #self.reverse + 1
-        self.forward[item] = id
-        self.reverse[id] = item
+        id = #self.idToItem + 1
+        self.itemToId[item] = id
+        self.idToItem[id] = item
       end
       return id
     end
   end
 
   function lookup:GetValue(id)
-    return self.reverse[id]
+    return self.idToItem[id]
   end
 
   return lookup
