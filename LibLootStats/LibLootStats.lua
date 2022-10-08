@@ -228,6 +228,7 @@ local function ContextsAreEqual(a, b)
   end
   return true
 end
+LibLootStats.ContextsAreEqual = ContextsAreEqual
 
 local function ContextToKey(context)
   local key = ""
@@ -249,6 +250,18 @@ local function ContextToKey(context)
 end
 LibLootStats.ContextToKey = ContextToKey
 
+local function ParseContextKey(key)
+  local context = {}
+  local e, l = 0, string.len(key)
+  while e < l do
+    local a, b, c = e, string.find(key, ":", e), string.find(key, ",", e + 1) or l + 1
+    context[string.sub(key, a + 1, b - 1)] = tonumber(string.sub(key, b + 1, c - 1))
+    e = c
+  end
+  return context
+end
+LibLootStats.ParseContextKey = ParseContextKey
+
 local function OutcomeToKey(outcome)
   local key = ""
   for _, p in ipairs(outcome) do
@@ -262,10 +275,33 @@ local function OutcomeToKey(outcome)
 end
 LibLootStats.OutcomeToKey = OutcomeToKey
 
+local function ParseOutcomeKey(key)
+  local outcome = {}
+  local e, l = 0, string.len(key)
+  while e < l do
+    local a, b, c = e, string.find(key, "*", e), string.find(key, "+", e + 1) or l + 1
+    table.insert(outcome, { item = tonumber(string.sub(key, a + 1, b - 1)), count = tonumber(string.sub(key, b + 1, c - 1)) })
+    e = c
+  end
+  return outcome
+end
+LibLootStats.ParseOutcomeKey = ParseOutcomeKey
+
 local function ScenarioToKey(scenario)
   return tostring(scenario.source) .. "/" .. tostring(scenario.action) .. "@" .. tostring(scenario.context) .. ">" .. tostring(scenario.outcome)
 end
 LibLootStats.ScenarioToKey = ScenarioToKey
+
+local function ParseScenarioKey(key)
+  local a, b, c = string.find(key, "/"), string.find(key, "@"), string.find(key, ">")
+  return {
+    source = tonumber(string.sub(key, 1, a - 1)),
+    action = tonumber(string.sub(key, a + 1, b - 1)),
+    context = tonumber(string.sub(key, b + 1, c - 1)),
+    outcome = tonumber(string.sub(key, c + 1)),
+  }
+end
+LibLootStats.ParseScenarioKey = ParseScenarioKey
 
 local outcomeGroup, extendLifetime = nil, false
 function LibLootStats:InitializeOutcomeGroup(source, action, context)
