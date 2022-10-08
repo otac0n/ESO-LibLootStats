@@ -231,6 +231,7 @@ end
 LibLootStats.ContextsAreEqual = ContextsAreEqual
 
 local function ContextToKey(context)
+  if context == nil then return nil end
   local key = ""
   local sorted = {}
   for k, v in pairs(context) do
@@ -327,7 +328,7 @@ end
 
 function LibLootStats:UpdatePendingOutcomeGroup(source, action, context)
   if outcomeGroup then
-    if outcomeGroup.source == nil and outcomeGroup.action == nil and outcomeGroup.context == nil then
+    if outcomeGroup.source == nil and outcomeGroup.action == nil then
       outcomeGroup.source = source
       outcomeGroup.action = action
       outcomeGroup.context = context
