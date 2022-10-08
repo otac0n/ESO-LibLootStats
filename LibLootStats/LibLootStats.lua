@@ -4,6 +4,9 @@
   EVENT_MANAGER:UnregisterForEvent(LibLootStats.ADDON_NAME, EVENT_ADD_ON_LOADED)
 end)
 
+local function Bind(fn) return function(...) return fn(LibLootStats, ...) end end
+local function Closure(fn) return function(_, ...) return fn(LibLootStats, ...) end end  
+
 local logger
 function LibLootStats:Initialize()
   logger = LibDebugLogger(LibLootStats.ADDON_NAME)
@@ -17,24 +20,20 @@ end
 
 function LibLootStats:InitializeHooks()
   local namespace = LibLootStats.ADDON_NAME
-  function Closure(fn)
-    return function(...) return fn(self, ...) end
-  end
-
-  EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_ITEM_DESTROYED, self.OnInventoryItemDestroyed)
-  EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_ITEM_USED, self.OnInventoryItemUsed)
-  EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_FULL_UPDATE, self.OnInventoryFullUpdate)
-  EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_SINGLE_SLOT_UPDATE, self.OnInventorySingleSlotUpdate)
-  ZO_PreHook("ZO_MailInboxShared_TakeAll", Closure(self.OnMailTakeAll))
-  ZO_PreHook("ClaimCurrentDailyLoginReward", Closure(self.OnClaimCurrentDailyLoginReward))
-  ZO_PreHook(SCENE_MANAGER, "OnSceneStateChange", self.OnSceneStateChanged)
-  ZO_PreHookHandler(RETICLE.interact, "OnEffectivelyShown", self.OnReticleEffectivelyShown)
-  ZO_PreHookHandler(RETICLE.interact, "OnHide", self.OnReticleHide)
-  ZO_PreHook(SYSTEMS:GetObject("loot"), "UpdateLootWindow", self.OnUpdateLootWindow)
-  ZO_PreHook(ZO_InteractionManager, "SelectChatterOptionByIndex", self.OnSelectChatterOptionByIndex)
+  EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_ITEM_DESTROYED, Bind(self.OnInventoryItemDestroyed))
+  EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_ITEM_USED, Bind(self.OnInventoryItemUsed))
+  EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_FULL_UPDATE, Bind(self.OnInventoryFullUpdate))
+  EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_SINGLE_SLOT_UPDATE, Bind(self.OnInventorySingleSlotUpdate))
+  ZO_PreHook("ZO_MailInboxShared_TakeAll", Bind(self.OnMailTakeAll))
+  ZO_PreHook("ClaimCurrentDailyLoginReward", Bind(self.OnClaimCurrentDailyLoginReward))
+  ZO_PreHook(SCENE_MANAGER, "OnSceneStateChange", Closure(self.OnSceneStateChanged))
+  ZO_PreHookHandler(RETICLE.interact, "OnEffectivelyShown", Closure(self.OnReticleEffectivelyShown))
+  ZO_PreHookHandler(RETICLE.interact, "OnHide", Closure(self.OnReticleHide))
+  ZO_PreHook(SYSTEMS:GetObject("loot"), "UpdateLootWindow", Closure(self.OnUpdateLootWindow))
+  ZO_PreHook(ZO_InteractionManager, "SelectChatterOptionByIndex", Closure(self.OnSelectChatterOptionByIndex))
   for i = 1, ZO_InteractWindowPlayerAreaOptions:GetNumChildren() do
     local option = ZO_InteractWindowPlayerAreaOptions:GetChild(i)
-    ZO_PreHookHandler(option, "OnMouseUp", function (...) LibLootStats:OnChatterOptionMouseUp(option, ...) end)
+    ZO_PreHookHandler(option, "OnMouseUp", function(...) self:OnChatterOptionMouseUp(option, ...) end)
   end
 end
 
@@ -73,7 +72,7 @@ function LibLootStats:OnReticleHide()
 end
 
 local currentScene, inHud
-function LibLootStats:OnSceneStateChanged()
+function LibLootStats:OnSceneStateChanged(scene, oldState, newState)
   local scene = SCENE_MANAGER:GetCurrentScene()
   if currentScene ~= scene.name then
     if currentScene == LOOT_SCENE.name then
@@ -150,7 +149,7 @@ for i = BAG_ITERATION_BEGIN, BAG_ITERATION_END do
   inventorySnapshot[i] = {}
 end
 
-function LibLootStats:OnInventoryFullUpdate(bagId, slotId, isNewItem, soundCategory, reason)
+function LibLootStats:OnInventoryFullUpdate(eventId, bagId, slotId, isNewItem, soundCategory, reason)
   for i = BAG_ITERATION_BEGIN, BAG_ITERATION_END do
     for slotId = 1, GetBagSize(i) do
       inventorySnapshot[i][slotId] = GetItemLink(i, slotId)
@@ -159,7 +158,7 @@ function LibLootStats:OnInventoryFullUpdate(bagId, slotId, isNewItem, soundCateg
 end
 
 local nextRemovalIsUse
-function LibLootStats:OnInventorySingleSlotUpdate(bagId, slotId, isNewItem, itemSoundCategory, updateReason, stackCountChange)
+function LibLootStats:OnInventorySingleSlotUpdate(eventId, bagId, slotId, isNewItem, soundCategory, reason, stackCountChange)
   if isNewItem then
     local source, action, context = LibLootStats:GetContext()
     local itemLink = GetItemLink(bagId, slotId)
