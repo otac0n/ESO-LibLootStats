@@ -195,7 +195,7 @@ function LibLootStats:OnInventorySingleSlotUpdate(eventId, bagId, slotId, isNewI
           LibLootStats:UpdatePendingOutcomeGroup(itemLink, GetString(SI_ITEM_ACTION_USE))
           LibLootStats:CollectOutcomeGroup()
         else
-          logger:Warn("Not tracking", GetString(SI_ITEM_ACTION_USE), itemLink, " with the change count ", stackCountChange)
+          logger:Warn("Not tracking", GetString(SI_ITEM_ACTION_USE), itemLink, "with the change count", stackCountChange)
         end
         nextRemovalIsUse = false
       end
@@ -367,7 +367,7 @@ function LibLootStats:CollectOutcomeGroup()
     if outcomeGroup.source == nil then
       logger:Warn("Not saving outcome group with nil source.")
     elseif outcomeGroup.action == nil then
-      logger:Warn("Not saving outcome group with nil action. Source was: ", outcomeGroup.source)
+      logger:Warn("Not saving outcome group with nil action. Source was:", outcomeGroup.source)
     else
       logger:Debug(outcomeGroup.source, "(", outcomeGroup.action, ")")
       for i = 1, #outcomeGroup do
