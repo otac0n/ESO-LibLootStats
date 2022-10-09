@@ -18,4 +18,5 @@ LibLootStats_Utils.lua
 LibLootStats_Strings.lua
 LibLootStats_Settings.lua
 LibLootStats_SettingsMenu.lua
+LibLootStats_ReticleTracker.lua
 LibLootStats.lua

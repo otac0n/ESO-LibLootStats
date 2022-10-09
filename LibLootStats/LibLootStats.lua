@@ -17,6 +17,7 @@ function LibLootStats:Initialize()
 end
 
 function LibLootStats:InitializeHooks()
+  LibLootStats.reticleTracker:InitializeHooks()
   local namespace = LibLootStats.ADDON_NAME
   EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_ITEM_DESTROYED, self.utils.Bind(self, self.OnInventoryItemDestroyed))
   EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_ITEM_USED, self.utils.Bind(self, self.OnInventoryItemUsed))
