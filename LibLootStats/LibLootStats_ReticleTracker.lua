@@ -19,11 +19,11 @@ function ReticleTracker:ReticleHidden()
 end
 
 function ReticleTracker:OnSceneStateChanged(scene, oldState, newState)
-  if shouldBeActive and newState == SCENE_HIDDEN and scene == HUD_SCENE then
+  if shouldBeActive and newState == SCENE_SHOWING and not (scene == HUD_SCENE or scene == HUD_UI_SCENE or scene.name == ZO_INTERACTION_SYSTEM_NAME or scene == LOOT_SCENE) then
     shouldBeActive = false
     self:AfterReticleUpdate()
   end
-end  
+end
 
 function ReticleTracker:ReticleShown()
   local newTarget = self:CreateCurrentTarget()
