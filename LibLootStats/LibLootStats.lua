@@ -36,7 +36,7 @@ end
 
 local lastDialogue
 
-local currentScene, inHud
+local currentScene, inHud, nextRemovalIsUse
 function LibLootStats:OnSceneStateChanged(scene, oldState, newState)
   local scene = SCENE_MANAGER:GetCurrentScene()
   if currentScene ~= scene.name then
@@ -44,6 +44,7 @@ function LibLootStats:OnSceneStateChanged(scene, oldState, newState)
       EVENT_MANAGER:RegisterForUpdate(LibLootStats.ADDON_NAME .. "CancelLoot", 0, function()
         EVENT_MANAGER:UnregisterForUpdate(LibLootStats.ADDON_NAME .. "CancelLoot")
         nextRemovalIsUse = false
+        self.reticleTracker.tracksLootWindow = not nextRemovalIsUse
         LibLootStats:CollectOutcomeGroup()
       end)
     elseif currentScene == ZO_INTERACTION_SYSTEM_NAME then
@@ -212,7 +213,6 @@ function LibLootStats:OnInventoryFullUpdate(eventId, bagId, slotId, isNewItem, s
   end
 end
 
-local nextRemovalIsUse
 function LibLootStats:OnInventorySingleSlotUpdate(eventId, bagId, slotId, isNewItem, soundCategory, reason, stackCountChange)
   if isNewItem then
     local source, action, context
@@ -244,6 +244,7 @@ function LibLootStats:OnInventorySingleSlotUpdate(eventId, bagId, slotId, isNewI
         end
         EVENT_MANAGER:UnregisterForUpdate(LibLootStats.ADDON_NAME .. "CancelLoot")
         nextRemovalIsUse = false
+        self.reticleTracker.tracksLootWindow = not nextRemovalIsUse
       end
     end
     inventorySnapshot[bagId][slotId] = GetItemLink(bagId, slotId)
@@ -252,6 +253,7 @@ end
 
 function LibLootStats:OnInventoryItemUsed(eventCode, itemSoundCategory)
   nextRemovalIsUse = true
+  self.reticleTracker.tracksLootWindow = not nextRemovalIsUse
 end
 
 function LibLootStats:OnInventoryItemDestroyed(eventCode, itemSoundCategory)
