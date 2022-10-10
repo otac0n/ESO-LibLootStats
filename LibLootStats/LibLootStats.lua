@@ -37,7 +37,7 @@ function LibLootStats:InitializeHooks()
 end
 
 local reticleActive = false
-local lastInteraction, lastInteractable, lastInteractInfo, lastFishingLure, lastSocialClass
+local lastInteraction, lastInteractable, lastInteractInfo, lastFishingLure, lastSocialClass, lastDialogue
 function LibLootStats:OnReticleEffectivelyShown()
   reticleActive = true
   local interaction, interactableName, interactionBlocked, isOwned, additionalInteractInfo, context, contextLink, isCriminalInteract = GetGameCameraInteractableActionInfo()
@@ -62,7 +62,7 @@ function LibLootStats:OnReticleEffectivelyShown()
     end
 
   elseif lastInteraction ~= interaction or lastInteractable ~= interactableName then
-    lastInteraction, lastInteractable, lastInteractInfo, lastFishingLure, lastSocialClass = nil, nil, nil, nil, nil
+    lastInteraction, lastInteractable, lastInteractInfo, lastFishingLure, lastSocialClass, lastDialogue = nil, nil, nil, nil, nil, nil
   end
 end
 
@@ -87,18 +87,18 @@ function LibLootStats:OnSceneStateChanged(scene, oldState, newState)
       lastFishingLure = nil
       if currentScene == ZO_INTERACTION_SYSTEM_NAME then
       else
-        lastInteraction, lastInteractable, lastInteractInfo, lastFishingLure, lastSocialClass = nil, nil, nil, nil, nil
+        lastInteraction, lastInteractable, lastInteractInfo, lastFishingLure, lastSocialClass, lastDialogue = nil, nil, nil, nil, nil, nil
       end
     end
   end
 end
 
-function LibLootStats:OnChatterOptionMouseUp(option)
-  lastInteraction = option:GetText()
+function LibLootStats:OnSelectChatterOptionByIndex(index)
+  self:OnChatterOptionMouseUp(ZO_InteractWindowPlayerAreaOptions:GetChild(index))
 end
 
-function LibLootStats:OnSelectChatterOptionByIndex(index)
-  lastInteraction = ZO_InteractWindowPlayerAreaOptions:GetChild(index):GetText()
+function LibLootStats:OnChatterOptionMouseUp(option)
+  lastDialogue = option:GetText()
 end
 
 local clearSubtypeAndLevel = { [4] = "0", [5] = "0" }
@@ -217,8 +217,8 @@ end
 function LibLootStats:GetContext()
   local context = {}
   if not nextRemovalIsUse then
-    local interactable, interaction = lastInteractable, lastInteraction
-  
+    local interactable, interaction = lastInteractable, lastDialogue or lastInteraction
+
     if lastInteractInfo == ADDITIONAL_INTERACT_INFO_FISHING_NODE then
       context.lure = lastFishingLure
       context.angler = SkillPointLevel(89)
