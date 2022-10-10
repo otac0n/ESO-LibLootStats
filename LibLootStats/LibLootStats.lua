@@ -26,8 +26,6 @@ function LibLootStats:InitializeHooks()
   ZO_PreHook("ZO_MailInboxShared_TakeAll", self.utils.Bind(self, self.OnMailTakeAll))
   ZO_PreHook("ClaimCurrentDailyLoginReward", self.utils.Bind(self, self.OnClaimCurrentDailyLoginReward))
   ZO_PreHook(SCENE_MANAGER, "OnSceneStateChange", self.utils.Closure(self, self.OnSceneStateChanged))
-  ZO_PreHookHandler(RETICLE.interact, "OnEffectivelyShown", self.utils.Closure(self, self.OnReticleEffectivelyShown))
-  ZO_PreHookHandler(RETICLE.interact, "OnHide", self.utils.Closure(self, self.OnReticleHide))
   ZO_PreHook(SYSTEMS:GetObject("loot"), "UpdateLootWindow", self.utils.Closure(self, self.OnUpdateLootWindow))
   ZO_PreHook(ZO_InteractionManager, "SelectChatterOptionByIndex", self.utils.Closure(self, self.OnSelectChatterOptionByIndex))
   for i = 1, ZO_InteractWindowPlayerAreaOptions:GetNumChildren() do
@@ -36,60 +34,24 @@ function LibLootStats:InitializeHooks()
   end
 end
 
-local reticleActive = false
-local lastInteraction, lastInteractable, lastInteractInfo, lastFishingLure, lastSocialClass, lastDialogue
-function LibLootStats:OnReticleEffectivelyShown()
-  reticleActive = true
-  local interaction, interactableName, interactionBlocked, isOwned, additionalInteractInfo, context, contextLink, isCriminalInteract = GetGameCameraInteractableActionInfo()
-
-  if lastInteractInfo == ADDITIONAL_INTERACT_INFO_FISHING_NODE and lastInteractable == interactableName then
-    -- Keep the lastInteractInfo set to ADDITIONAL_INTERACT_INFO_FISHING_NODE and leave the lure set
-    lastInteraction = interaction
-  elseif not interactionBlocked then
-    lastInteraction, lastInteractable, lastInteractInfo = interaction, interactableName, additionalInteractInfo
-
-    if additionalInteractInfo == ADDITIONAL_INTERACT_INFO_FISHING_NODE then
-      lastFishingLure = GetFishingLure()
-    else
-      lastFishingLure = nil
-    end
-
-    if additionalInteractInfo == ADDITIONAL_INTERACT_INFO_PICKPOCKET_CHANCE then
-      local isInBonus, isHostile, percentChance, difficulty, isEmpty, prospectiveResult, monsterSocialClassString, monsterSocialClass = GetGameCameraPickpocketingBonusInfo()
-      lastSocialClass = monsterSocialClassString
-    else
-      lastSocialClass = nil
-    end
-
-  elseif lastInteraction ~= interaction or lastInteractable ~= interactableName then
-    lastInteraction, lastInteractable, lastInteractInfo, lastFishingLure, lastSocialClass, lastDialogue = nil, nil, nil, nil, nil, nil
-  end
-end
-
-function LibLootStats:OnReticleHide()
-  reticleActive = false
-end
+local lastDialogue
 
 local currentScene, inHud
 function LibLootStats:OnSceneStateChanged(scene, oldState, newState)
   local scene = SCENE_MANAGER:GetCurrentScene()
   if currentScene ~= scene.name then
     if currentScene == LOOT_SCENE.name then
-      nextRemovalIsUse = false
-      LibLootStats:CollectOutcomeGroup()
+      EVENT_MANAGER:RegisterForUpdate(LibLootStats.ADDON_NAME .. "CancelLoot", 0, function()
+        EVENT_MANAGER:UnregisterForUpdate(LibLootStats.ADDON_NAME .. "CancelLoot")
+        nextRemovalIsUse = false
+        LibLootStats:CollectOutcomeGroup()
+      end)
+    elseif currentScene == ZO_INTERACTION_SYSTEM_NAME then
+      lastDialogue = nil
     end
 
     currentScene = scene.name
     logger:Verbose("Scene changed to: %s", currentScene)
-
-    inHud = currentScene == SCENE_MANAGER.hudSceneName or currentScene == SCENE_MANAGER.hudUISceneName
-    if not inHud then
-      lastFishingLure = nil
-      if currentScene == ZO_INTERACTION_SYSTEM_NAME then
-      else
-        lastInteraction, lastInteractable, lastInteractInfo, lastFishingLure, lastSocialClass, lastDialogue = nil, nil, nil, nil, nil, nil
-      end
-    end
   end
 end
 
@@ -215,28 +177,26 @@ local function SkillPointLevel(skillPointId)
 end
 
 function LibLootStats:GetContext()
-  local context = {}
+  local interactable, interaction, context = nil, nil, {}
   if not nextRemovalIsUse then
-    local interactable, interaction = lastInteractable, lastDialogue or lastInteraction
-
-    if lastInteractInfo == ADDITIONAL_INTERACT_INFO_FISHING_NODE then
-      context.lure = lastFishingLure
-      context.angler = SkillPointLevel(89)
-    elseif lastInteractInfo == ADDITIONAL_INTERACT_INFO_PICKPOCKET_CHANCE then
-      interactable = lastSocialClass
-      context.cutpurse = SkillPointLevel(90)
-    else
-      context.harvest = SkillPointLevel(81)
-      context.homemaker = SkillPointLevel(91)
-      context.hunter = SkillPointLevel(79)
+    local target = self.reticleTracker.lastTarget
+    if target and target.active then
+      interactable, interaction = target.interactableName, lastDialogue or target.interaction
+      if target.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_FISHING_NODE then
+        context.lure = target.fishingLure
+        context.angler = SkillPointLevel(89)
+      elseif target.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_PICKPOCKET_CHANCE then
+        interactable = target.socialClass
+        context.cutpurse = SkillPointLevel(90)
+      else
+        context.harvest = SkillPointLevel(81)
+        context.homemaker = SkillPointLevel(91)
+        context.hunter = SkillPointLevel(79)
+      end
+      context.zoneId = GetZoneId(GetUnitZoneIndex("player"))
     end
-
-    context.zoneId = GetZoneId(GetUnitZoneIndex("player"))
-
-    return interactable, interaction, context
-  else
-    return nil, nil, context
   end
+  return interactable, interaction, context
 end
 
 local inventorySnapshot = {}
@@ -282,6 +242,7 @@ function LibLootStats:OnInventorySingleSlotUpdate(eventId, bagId, slotId, isNewI
         else
           logger:Warn("Not tracking", GetString(SI_ITEM_ACTION_USE), itemLink, "with the change count", stackCountChange)
         end
+        EVENT_MANAGER:UnregisterForUpdate(LibLootStats.ADDON_NAME .. "CancelLoot")
         nextRemovalIsUse = false
       end
     end
