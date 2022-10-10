@@ -101,14 +101,76 @@ function LibLootStats:OnSelectChatterOptionByIndex(index)
   lastInteraction = ZO_InteractWindowPlayerAreaOptions:GetChild(index):GetText()
 end
 
+local clearSubtypeAndLevel = { [4] = "0", [5] = "0" }
+local updateVector = {
+  [ITEMTYPE_ARMOR_BOOSTER] = clearSubtypeAndLevel,
+  [ITEMTYPE_ARMOR_TRAIT] = clearSubtypeAndLevel,
+  [ITEMTYPE_BLACKSMITHING_BOOSTER] = clearSubtypeAndLevel,
+  [ITEMTYPE_BLACKSMITHING_MATERIAL] = clearSubtypeAndLevel,
+  [ITEMTYPE_BLACKSMITHING_RAW_MATERIAL] = clearSubtypeAndLevel,
+  [ITEMTYPE_CLOTHIER_BOOSTER] = clearSubtypeAndLevel,
+  [ITEMTYPE_CLOTHIER_MATERIAL] = clearSubtypeAndLevel,
+  [ITEMTYPE_CLOTHIER_RAW_MATERIAL] = clearSubtypeAndLevel,
+  [ITEMTYPE_BLACKSMITHING_RAW_MATERIAL] = clearSubtypeAndLevel,
+  [ITEMTYPE_BLACKSMITHING_RAW_MATERIAL] = clearSubtypeAndLevel,
+  [ITEMTYPE_ENCHANTING_RUNE_ASPECT] = clearSubtypeAndLevel,
+  [ITEMTYPE_ENCHANTING_RUNE_ESSENCE] = clearSubtypeAndLevel,
+  [ITEMTYPE_ENCHANTING_RUNE_POTENCY] = clearSubtypeAndLevel,
+  [ITEMTYPE_FURNISHING_MATERIAL] = clearSubtypeAndLevel,
+  [ITEMTYPE_INGREDIENT] = clearSubtypeAndLevel,
+  [ITEMTYPE_JEWELRYCRAFTING_BOOSTER] = clearSubtypeAndLevel,
+  [ITEMTYPE_JEWELRYCRAFTING_RAW_BOOSTER] = clearSubtypeAndLevel,
+  [ITEMTYPE_JEWELRYCRAFTING_MATERIAL] = clearSubtypeAndLevel,
+  [ITEMTYPE_JEWELRYCRAFTING_RAW_MATERIAL] = clearSubtypeAndLevel,
+  [ITEMTYPE_JEWELRY_RAW_TRAIT] = clearSubtypeAndLevel,
+  [ITEMTYPE_JEWELRY_TRAIT] = clearSubtypeAndLevel,
+  [ITEMTYPE_RAW_MATERIAL] = clearSubtypeAndLevel,
+  [ITEMTYPE_STYLE_MATERIAL] = clearSubtypeAndLevel,
+  [ITEMTYPE_WEAPON_BOOSTER] = clearSubtypeAndLevel,
+  [ITEMTYPE_WEAPON_TRAIT] = clearSubtypeAndLevel,
+  [ITEMTYPE_WOODWORKING_BOOSTER] = clearSubtypeAndLevel,
+  [ITEMTYPE_WOODWORKING_MATERIAL] = clearSubtypeAndLevel,
+  [ITEMTYPE_WOODWORKING_RAW_MATERIAL] = clearSubtypeAndLevel,
+}
+
+function LibLootStats:CanonicalizeItemLink(itemLink)
+  local itemType, specializedItemType = GetItemLinkItemType(itemLink)
+  local update = updateVector[itemType]
+  if update then
+    itemLink = self:UpdateItemLink(itemLink, update)
+  end
+  return itemLink
+end
+
+function LibLootStats:UpdateItemLink(itemLink, updates)
+  local updated = ""
+  local i = 1
+  for v in string.gmatch(itemLink, "[^:]+") do
+    updated = updated .. (updated ~= "" and ":" or "") .. (updates[i] or v)
+    i = i + 1
+  end
+  return updated
+end
+
 function LibLootStats:OnMailTakeAll(mailId)
   local senderDisplayName, senderCharacterName, subject, icon, unread, fromSystem, fromCS, returned, numAttachments, attachedMoney, codAmount, expiresInDays, secsSinceReceived = GetMailItemInfo(mailId)
-  if fromSystem then
-    lastInteraction = GetString(SI_MAIL_READ_ATTACHMENTS_TAKE)
-    lastInteractable = subject
-    lastInteractInfo, lastFishingLure, lastSocialClass = nil, nil, nil
-  else
-    lastInteraction, lastInteractable, lastInteractInfo, lastFishingLure, lastSocialClass = nil, nil, nil, nil, nil
+
+  local shouldTrack = fromSystem and not fromCS and not returned
+  if shouldTrack and numAttachments > 0 then
+    local scenario = {
+      source = subject,
+      action = GetString(SI_MAIL_READ_ATTACHMENTS_TAKE),
+      context = {}
+    }
+
+    local items = {}
+    for i = 1, numAttachments do
+      local icon, count, creator = GetAttachedItemInfo(mailId, i)
+      local itemLink = self:CanonicalizeItemLink(GetAttachedItemLink(mailId, i))
+      table.insert(items, { item = itemLink, count = count })
+    end
+
+    self.activeSources:AddTransientSource("mail", scenario, { delay = 7000, items = items })
   end
 end
 
@@ -183,9 +245,22 @@ end
 local nextRemovalIsUse
 function LibLootStats:OnInventorySingleSlotUpdate(eventId, bagId, slotId, isNewItem, soundCategory, reason, stackCountChange)
   if isNewItem then
-    local source, action, context = LibLootStats:GetContext()
+    local source, action, context
     local itemLink = GetItemLink(bagId, slotId)
     inventorySnapshot[bagId][slotId] = itemLink
+
+    local activeSource = self.activeSources:FindBestSource(itemLink, stackCountChange)
+    if activeSource then
+      if activeSource.scenario == nil then
+        logger:Debug("Skipping", itemLink, "from", activeSource.name, "source.")
+        return
+      end
+      source, action, context = activeSource.scenario.source, activeSource.scenario.action, activeSource.scenario.context
+      logger:Debug("Source overridden by active source.")
+    else
+      source, action, context = LibLootStats:GetContext()
+    end
+
     LibLootStats:AddOutcome(source, action, context, itemLink, stackCountChange)
   else
     if stackCountChange < 0 then
