@@ -176,12 +176,22 @@ end
 
 function LibLootStats:OnClaimCurrentDailyLoginReward()
   local index = GetDailyLoginClaimableRewardIndex()
-  if index == nil then
-    return
+  if index ~= nil then
+    local rewardId, count, isMilestone = GetDailyLoginRewardInfoForCurrentMonth(index)
+    local entryType = GetRewardType(rewardId)
+    if entryType == REWARD_ENTRY_TYPE_ITEM then
+      local currentMonth = GetCurrentDailyLoginMonth()
+      local currentESOMonthName = GetString("SI_GREGORIANCALENDARMONTHS_LORENAME", currentMonth)
+
+      local itemLink = GetItemRewardItemLink(rewardId, count)
+      local scenario = {
+        source = currentESOMonthName,
+        action = GetString(SI_DAILY_LOGIN_REWARDS_CLAIM_KEYBIND),
+        context = {}
+      }
+      self.activeSources:AddTransientSource("reward", scenario, { delay = 7000, items = { [1] = { item = itemLink, count = count } } })
+    end
   end
-  lastInteractable = ZO_Daily_Login_Rewards_KeyboardCurrentMonth:GetText()
-  lastInteraction = GetString(SI_DAILY_LOGIN_REWARDS_CLAIM_KEYBIND)
-  lastInteractInfo, lastFishingLure, lastSocialClass = nil, nil, nil
 end
 
 local function SkillPointLevel(skillPointId)
