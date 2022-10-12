@@ -237,12 +237,12 @@ function LibLootStats:OnInventorySingleSlotUpdate(eventId, bagId, slotId, isNewI
       local itemLink = inventorySnapshot[bagId][slotId]
       if nextRemovalIsUse then
         if bagId == BAG_BACKPACK and stackCountChange == -1 then
-          LibLootStats:UpdatePendingOutcomeGroup(itemLink, GetString(SI_ITEM_ACTION_USE))
-          LibLootStats:CollectOutcomeGroup()
+          LibLootStats:UpdatePendingOutcomeGroup(itemLink, GetString(SI_ITEM_ACTION_USE), {})
         else
           logger:Warn("Not tracking", GetString(SI_ITEM_ACTION_USE), itemLink, "with the change count", stackCountChange)
         end
         EVENT_MANAGER:UnregisterForUpdate(LibLootStats.ADDON_NAME .. "CancelLoot")
+        LibLootStats:CollectOutcomeGroup()
         nextRemovalIsUse = false
         self.reticleTracker.tracksLootWindow = not nextRemovalIsUse
       end
@@ -408,29 +408,30 @@ function LibLootStats:UpdatePendingOutcomeGroup(source, action, context)
   end
 end
 
+function itemsDebug(outcomeGroup)
+  local logOutput = ""
+  for i = 1, #outcomeGroup do
+    local outcome = outcomeGroup[i]
+    logOutput = logOutput .. "\n  -> " .. outcome.item
+    if outcome.count ~= 1 then
+      logOutput = logOutput .. " (" .. tostring(outcome.count) .. ")"
+    end
+  end
+  return logOutput
+end
+LibLootStats.itemsDebug = itemsDebug
+
 function LibLootStats:CollectOutcomeGroup()
   EVENT_MANAGER:UnregisterForUpdate(LibLootStats.ADDON_NAME .. "CollectOutcomeGroup")
 
   if outcomeGroup ~= nil then
     if outcomeGroup.source == nil then
-      logger:Warn("Not saving outcome group with nil source.")
+      logger:Warn("Not saving outcome group with nil source." .. itemsDebug(outcomeGroup))
     elseif outcomeGroup.action == nil then
-      logger:Warn("Not saving outcome group with nil action. Source was:", outcomeGroup.source)
+      logger:Warn("Not saving outcome group with nil action. Source was: " .. outcomeGroup.source .. itemsDebug(outcomeGroup))
     else
-      logger:Debug(outcomeGroup.source, "(", outcomeGroup.action, ")")
-      for i = 1, #outcomeGroup do
-        local outcome = outcomeGroup[i]
-        local item = outcome.item
-        local count = outcome.count
-        local result
-        if count == 1 then
-          result = item
-        else
-          result = string.format("%s (%d)", item, count)
-        end
+      logger:Debug(outcomeGroup.source .. " (" .. outcomeGroup.action .. ")" .. itemsDebug(outcomeGroup))
 
-        logger:Debug("  ->", result)
-      end
       LibLootStats:SaveOutcomeGroup(outcomeGroup)
     end
   end

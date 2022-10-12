@@ -70,7 +70,7 @@ function activeSources:RemoveSource(source)
     if self.sources[i] == source then
       table.remove(self.sources, i)
       if source.items and #source.items ~= 0 then
-        LibLootStats.logger:Warn("Removed source with non-empty item list.")
+        LibLootStats.logger:Warn("Removed source with non-empty item list." .. LibLootStats.itemsDebug(source.items))
       end
       if source.remove then
         source.remove()
