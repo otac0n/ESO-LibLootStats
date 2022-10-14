@@ -189,10 +189,12 @@ function LibLootStats:GetContext()
       elseif target.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_PICKPOCKET_CHANCE then
         interactable = target.socialClass
         context.cutpurse = SkillPointLevel(90)
+      elseif target.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_LOCKED then
+        context.lock = target.lockQuality
+        context.hunter = SkillPointLevel(79)
       else
         context.harvest = SkillPointLevel(81)
         context.homemaker = SkillPointLevel(91)
-        context.hunter = SkillPointLevel(79)
       end
       context.zoneId = GetZoneId(GetUnitZoneIndex("player"))
     end

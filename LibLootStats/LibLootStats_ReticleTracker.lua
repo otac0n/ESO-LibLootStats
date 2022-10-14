@@ -20,7 +20,7 @@ function ReticleTracker:ReticleHidden()
 end
 
 function ReticleTracker:OnSceneStateChanged(scene, oldState, newState)
-  if shouldBeActive and newState == SCENE_SHOWING and not (scene == HUD_SCENE or scene == HUD_UI_SCENE or scene.name == ZO_INTERACTION_SYSTEM_NAME or (tracksLootWindow and scene == LOOT_SCENE)) then
+  if shouldBeActive and newState == SCENE_SHOWING and not (scene == HUD_SCENE or scene == HUD_UI_SCENE or scene == LOCK_PICK_SCENE or scene == LOCK_PICK_GAMEPAD_SCENE or scene.name == ZO_INTERACTION_SYSTEM_NAME or (tracksLootWindow and scene == LOOT_SCENE)) then
     shouldBeActive = false
     self:AfterReticleUpdate()
   end
@@ -78,6 +78,13 @@ function ReticleTracker:CreateCurrentTarget()
     socialClass = nil
   end
 
+  local lockQuality
+  if additionalInteractInfo == ADDITIONAL_INTERACT_INFO_LOCKED then
+    lockQuality = GetString("SI_LOCKQUALITY", context)
+  else
+    lockQuality = nil
+  end
+
   return {
     interactableName = interactableName,
     questInteraction = questInteraction,
@@ -87,6 +94,7 @@ function ReticleTracker:CreateCurrentTarget()
     questToolName = questToolName,
     fishingLure = fishingLure,
     socialClass = socialClass,
+    lockQuality = lockQuality
   }
 end
 
@@ -118,9 +126,13 @@ function ReticleTracker:ReacquireOrInstallTarget(newTarget)
 end
 
 function ReticleTracker:UpdateTarget(destination, source)
-  if destination.interaction ~= source.interaction then
-    LibLootStats.logger:Verbose("interaction: ", destination.interaction, " => ", source.interaction)
-    destination.interaction = source.interaction
+  if destination.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_LOCKED and source.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_NONE then
+    -- Keep the interaction the same.
+  else
+    if destination.interaction ~= source.interaction then
+      LibLootStats.logger:Verbose("interaction: ", destination.interaction, " => ", source.interaction)
+      destination.interaction = source.interaction
+    end
   end
 
   if destination.interactionBlocked ~= source.interactionBlocked then
@@ -128,7 +140,8 @@ function ReticleTracker:UpdateTarget(destination, source)
     destination.interactionBlocked = source.interactionBlocked
   end
 
-  if destination.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_FISHING_NODE and source.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_NONE then
+  if (destination.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_FISHING_NODE and source.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_NONE) or
+     (destination.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_LOCKED and source.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_NONE) then
     -- Keep the additionalInteractInfo the same.
   else
     if destination.additionalInteractInfo ~= source.additionalInteractInfo then
@@ -143,6 +156,15 @@ function ReticleTracker:UpdateTarget(destination, source)
     if destination.fishingLure ~= source.fishingLure then
       LibLootStats.logger:Verbose("fishingLure: ", destination.fishingLure, " => ", source.fishingLure)
       destination.fishingLure = source.fishingLure
+    end
+  end
+
+  if destination.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_LOCKED and source.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_NONE and source.lockQuality == nil then
+    -- Don't overwrite the lock quality with nil.
+  else
+    if destination.lockQuality ~= source.lockQuality then
+      LibLootStats.logger:Verbose("fishingLure: ", destination.lockQuality, " => ", source.lockQuality)
+      destination.lockQuality = source.lockQuality
     end
   end
 
