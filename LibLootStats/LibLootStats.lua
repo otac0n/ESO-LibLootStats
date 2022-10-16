@@ -146,7 +146,7 @@ function LibLootStats:OnClaimCurrentDailyLoginReward()
       local currentMonth = GetCurrentDailyLoginMonth()
       local currentESOMonthName = GetString("SI_GREGORIANCALENDARMONTHS_LORENAME", currentMonth)
 
-      local itemLink = GetItemRewardItemLink(rewardId, count)
+      local itemLink = self:CanonicalizeItemLink(GetItemRewardItemLink(rewardId, count))
       local scenario = {
         source = currentESOMonthName,
         action = GetString(SI_DAILY_LOGIN_REWARDS_CLAIM_KEYBIND),
