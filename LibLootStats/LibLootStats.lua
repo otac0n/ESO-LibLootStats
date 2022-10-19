@@ -120,20 +120,31 @@ function LibLootStats:OnMailTakeAll(mailId)
 
   local shouldTrack = fromSystem and not fromCS and not returned
   if shouldTrack and numAttachments > 0 then
-    local scenario = {
-      source = subject,
-      action = GetString(SI_MAIL_READ_ATTACHMENTS_TAKE),
-      context = {}
-    }
-
-    local items = {}
-    for i = 1, numAttachments do
-      local icon, count, creator = GetAttachedItemInfo(mailId, i)
-      local itemLink = self:CanonicalizeItemLink(GetAttachedItemLink(mailId, i))
-      table.insert(items, { item = itemLink, count = count })
+    local exists = false
+    for _, source in ipairs(self.activeSources.sources) do
+      if source.mailId == mailId then
+        exists = true
+        break
+      end
     end
 
-    self.activeSources:AddTransientSource("mail", scenario, { delay = 7000, items = items })
+    if not exists then
+      local scenario = {
+        source = subject,
+        action = GetString(SI_MAIL_READ_ATTACHMENTS_TAKE),
+        context = {}
+      }
+
+      local items = {}
+      for i = 1, numAttachments do
+        local icon, count, creator = GetAttachedItemInfo(mailId, i)
+        local itemLink = self:CanonicalizeItemLink(GetAttachedItemLink(mailId, i))
+        table.insert(items, { item = itemLink, count = count })
+      end
+
+      local source = self.activeSources:AddTransientSource("mail", scenario, { delay = 7000, items = items })
+      source.mailId = mailId
+    end
   end
 end
 
@@ -228,7 +239,6 @@ function LibLootStats:OnInventorySingleSlotUpdate(eventId, bagId, slotId, isNewI
         return
       end
       source, action, context = activeSource.scenario.source, activeSource.scenario.action, activeSource.scenario.context
-      logger:Debug("Source overridden by active source.")
     else
       source, action, context = LibLootStats:GetContext()
     end
