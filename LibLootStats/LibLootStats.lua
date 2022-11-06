@@ -65,7 +65,8 @@ function LibLootStats:OnChatterOptionMouseUp(option)
 end
 
 local clearSubtypeAndLevel = { [4] = "0", [5] = "0" }
-local updateVector = {
+
+local itemTypeVector = {
   [ITEMTYPE_ARMOR_BOOSTER] = clearSubtypeAndLevel,
   [ITEMTYPE_ARMOR_TRAIT] = clearSubtypeAndLevel,
   [ITEMTYPE_BLACKSMITHING_BOOSTER] = clearSubtypeAndLevel,
@@ -96,9 +97,54 @@ local updateVector = {
   [ITEMTYPE_WOODWORKING_RAW_MATERIAL] = clearSubtypeAndLevel,
 }
 
+local setCrownItemMat    = {                         [17] = "1", [20] = "1" }
+local setCrownItem       = {              [5] = "1", [17] = "1", [20] = "1" }
+local setCrownItem6      = { [4] = "6",   [5] = "1", [17] = "1", [20] = "1" }
+local setCrownItem32     = { [4] = "32",  [5] = "1", [17] = "1", [20] = "1" }
+local setCrownItem122    = { [4] = "122", [5] = "1", [17] = "1", [20] = "1" }
+local setCrownItem123    = { [4] = "123", [5] = "1", [17] = "1", [20] = "1" }
+local setCrownItemScroll = { [4] = "124", [5] = "1", [17] = "1", [20] = "1" }
+
+local itemIdVector = {
+  [61079]  = setCrownItem122,    -- Crown Repair Kit
+  [61080]  = setCrownItem32,     -- Crown Soul Gem
+  [64523]  = setCrownItemScroll, -- Attribute Respecification Scroll
+  [64524]  = setCrownItemScroll, -- Skill Respecification Scroll
+  [64537]  = setCrownItemScroll, -- Crown Experience Scroll
+  [64700]  = setCrownItem6,      -- Crown Lesson: Riding Speed
+  [64701]  = setCrownItem6,      -- Crown Lesson: Riding Stamina
+  [64702]  = setCrownItem6,      -- Crown Lesson: Riding Capactity
+  [64710]  = setCrownItem123,    -- Crown Tri-Restoration Potion
+  [64711]  = setCrownItem123,    -- Crown Fortifying Meal
+  [71668]  = setCrownItemMat,    -- Crown Mimic Stone
+  [79690]  = setCrownItem6,      -- Crown Lethal Poison
+  [94441]  = setCrownItemScroll, -- Grand Gold Coast Experience Scroll
+  [125450] = setCrownItemScroll, -- Instant Blacksmithing Research
+  [125464] = setCrownItemScroll, -- Instant Clothing Research
+  [125467] = setCrownItemScroll, -- Instant Woodworking Research
+  [125470] = setCrownItemScroll, -- Instant All Research
+  [134583] = setCrownItem,       -- Transmutation Geode (Common)
+  [134590] = setCrownItem,       -- Transmutation Geode (Epic)
+  [135110] = setCrownItemScroll, -- Crown Experience Scroll (Character Bound)
+  [135121] = setCrownItem6,      -- Crown Lethal Poison (Character Bound)
+  [135128] = setCrownItemScroll, -- Skill Respecification Scroll (Character Bound)
+  [135130] = setCrownItemScroll, -- Attribute Respecification Scroll (Character Bound)
+}
+
+function LibLootStats:GetItemId(itemLink)
+  local match = string.match(itemLink, "item:(%d+):")
+  if match then
+    return tonumber(match)
+  end
+end
+
 function LibLootStats:CanonicalizeItemLink(itemLink)
   local itemType, specializedItemType = GetItemLinkItemType(itemLink)
-  local update = updateVector[itemType]
+  local update = itemTypeVector[itemType] or itemIdVector[self:GetItemId(itemLink)]
+  if not string.match(itemLink, "^|H0:") then
+    update = (update and {table.unpack(update)}) or {}
+    update[1] = "|H0"
+  end
   if update then
     itemLink = self:UpdateItemLink(itemLink, update)
   end
