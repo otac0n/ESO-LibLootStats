@@ -18,13 +18,14 @@ function activeSources:AddTransientSource(name, scenario, options)
     scenario = scenario,
   }
 
-  local namespace = LibLootStats.ADDON_NAME .. ".TransientSource." .. transientId
-  transientId = transientId + 1
-  source.remove = function() EVENT_MANAGER:UnregisterForUpdate(namespace) end
-
   if options then
     source.items = options.items
   end
+
+  local remove = options.remove or function() end
+  local namespace = LibLootStats.ADDON_NAME .. ".TransientSource." .. transientId
+  transientId = transientId + 1
+  source.remove = function() EVENT_MANAGER:UnregisterForUpdate(namespace) remove() end
 
   self:AddSource(source)
   EVENT_MANAGER:RegisterForUpdate(namespace, (options and options.delay) or 0, function()
