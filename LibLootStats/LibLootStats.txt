@@ -5,7 +5,7 @@
 ; You can read the full terms at https://account.elderscrollsonline.com/add-on-terms
 
 ## Title: LibLootStats
-## APIVersion: 101035
+## APIVersion: 101036
 ## Version: 1.0
 ## SavedVariables: LibLootStats_Settings LibLootStats_Strings LibLootStats_Outcomes LibLootStats_Contexts LibLootStats_Scenarios
 ## Author: otac0n
