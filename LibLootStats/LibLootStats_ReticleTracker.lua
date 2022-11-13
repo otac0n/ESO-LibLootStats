@@ -37,7 +37,7 @@ function ReticleTracker:ReticleShown()
 
   if self.lastTarget and self.lastTarget.active then
     if not self:TargetsMatch(self.lastTarget, newTarget) then
-      LibLootStats.logger:Verbose("Closing previous reticle target: ", self.lastTarget.interactableName, "(", self.lastTarget.interaction, ") ~= ", newTarget.interactableName, "(", newTarget.interaction, ")")
+      LibLootStats.logger:Debug("Closing previous reticle target: ", self.lastTarget.interactableName, "(", self.lastTarget.interaction, ") ~= ", newTarget.interactableName, "(", newTarget.interaction, ")")
       self:CloseTarget()
     end
   end
@@ -104,7 +104,7 @@ end
 
 function ReticleTracker:AfterReticleUpdate()
   if not shouldBeActive and self.lastTarget and self.lastTarget.active then
-    LibLootStats.logger:Verbose("Closing previous reticle target: ", self.lastTarget.interactableName, "(", self.lastTarget.interaction, ") hidden")
+    LibLootStats.logger:Debug("Closing previous reticle target: ", self.lastTarget.interactableName, "(", self.lastTarget.interaction, ") hidden")
     self:CloseTarget()
   end
 end
@@ -112,12 +112,12 @@ end
 function ReticleTracker:ReacquireOrInstallTarget(newTarget)
   if self.lastTarget and self:TargetsMatch(self.lastTarget, newTarget) then
     if not self.lastTarget.active then
-      LibLootStats.logger:Verbose("Reacquired reticle target: ", self.lastTarget.interactableName, "(", self.lastTarget.interaction, ")")
+      LibLootStats.logger:Debug("Reacquired reticle target: ", self.lastTarget.interactableName, "(", self.lastTarget.interaction, ")")
       self.lastTarget.active = true
     end
     return self.lastTarget
   else
-    LibLootStats.logger:Verbose("Installed new reticle target: ", newTarget.interactableName, "(", newTarget.interaction, ")")
+    LibLootStats.logger:Debug("Installed new reticle target: ", newTarget.interactableName, "(", newTarget.interaction, ")")
     newTarget.active = true
     table.insert(self.recentTargets, newTarget)
     self.lastTarget = newTarget
@@ -130,13 +130,13 @@ function ReticleTracker:UpdateTarget(destination, source)
     -- Keep the interaction the same.
   else
     if destination.interaction ~= source.interaction then
-      LibLootStats.logger:Verbose("interaction: ", destination.interaction, " => ", source.interaction)
+      LibLootStats.logger:Debug("interaction: ", destination.interaction, " => ", source.interaction)
       destination.interaction = source.interaction
     end
   end
 
   if destination.interactionBlocked ~= source.interactionBlocked then
-    LibLootStats.logger:Verbose("interactionBlocked: ", destination.interactionBlocked, " => ", source.interactionBlocked)
+    LibLootStats.logger:Debug("interactionBlocked: ", destination.interactionBlocked, " => ", source.interactionBlocked)
     destination.interactionBlocked = source.interactionBlocked
   end
 
@@ -145,7 +145,7 @@ function ReticleTracker:UpdateTarget(destination, source)
     -- Keep the additionalInteractInfo the same.
   else
     if destination.additionalInteractInfo ~= source.additionalInteractInfo then
-      LibLootStats.logger:Verbose("additionalInteractInfo: ", destination.additionalInteractInfo, " => ", source.additionalInteractInfo)
+      LibLootStats.logger:Debug("additionalInteractInfo: ", destination.additionalInteractInfo, " => ", source.additionalInteractInfo)
       destination.additionalInteractInfo = source.additionalInteractInfo
     end
   end
@@ -154,7 +154,7 @@ function ReticleTracker:UpdateTarget(destination, source)
     -- Don't overwrite the bait with nil.
   else
     if destination.fishingLure ~= source.fishingLure then
-      LibLootStats.logger:Verbose("fishingLure: ", destination.fishingLure, " => ", source.fishingLure)
+      LibLootStats.logger:Debug("fishingLure: ", destination.fishingLure, " => ", source.fishingLure)
       destination.fishingLure = source.fishingLure
     end
   end
@@ -163,18 +163,18 @@ function ReticleTracker:UpdateTarget(destination, source)
     -- Don't overwrite the lock quality with nil.
   else
     if destination.lockQuality ~= source.lockQuality then
-      LibLootStats.logger:Verbose("fishingLure: ", destination.lockQuality, " => ", source.lockQuality)
+      LibLootStats.logger:Debug("lockQuality: ", destination.lockQuality, " => ", source.lockQuality)
       destination.lockQuality = source.lockQuality
     end
   end
 
   if destination.questToolName ~= source.questToolName then
-    LibLootStats.logger:Verbose("questToolName: ", destination.questToolName, " => ", source.questToolName)
+    LibLootStats.logger:Debug("questToolName: ", destination.questToolName, " => ", source.questToolName)
     destination.questToolName = source.questToolName
   end
 
   if destination.socialClass ~= source.socialClass then
-    LibLootStats.logger:Verbose("socialClass: ", destination.socialClass, " => ", source.socialClass)
+    LibLootStats.logger:Debug("socialClass: ", destination.socialClass, " => ", source.socialClass)
     destination.socialClass = source.socialClass
   end
 end

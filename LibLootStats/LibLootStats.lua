@@ -8,7 +8,7 @@ local logger
 function LibLootStats:Initialize()
   logger = LibDebugLogger(LibLootStats.ADDON_NAME)
   LibLootStats.logger = logger
-  logger:SetMinLevelOverride(LibDebugLogger.LOG_LEVEL_VERBOSE)
+  logger:SetMinLevelOverride(LibDebugLogger.LOG_LEVEL_DEBUG)
   LibLootStats:InitializeSettings()
   LibLootStats:InitializeHooks()
   LibLootStats.settingsMenu = LibLootStatsSettingsMenu:New()
@@ -281,7 +281,7 @@ function LibLootStats:OnInventorySingleSlotUpdate(eventId, bagId, slotId, isNewI
     local activeSource = self.activeSources:FindBestSource(itemLink, stackCountChange)
     if activeSource then
       if activeSource.scenario == nil then
-        logger:Debug("Skipping", itemLink, "from", activeSource.name, "source.")
+        logger:Info("Skipping", itemLink, "from", activeSource.name, "source.")
         return
       end
       source, action, context = activeSource.scenario.source, activeSource.scenario.action, activeSource.scenario.context
@@ -488,7 +488,7 @@ function LibLootStats:CollectOutcomeGroup()
     elseif outcomeGroup.action == nil then
       logger:Warn("Not saving outcome group with nil action. Source was: " .. outcomeGroup.source .. itemsDebug(outcomeGroup))
     else
-      logger:Debug(outcomeGroup.source .. " (" .. outcomeGroup.action .. ")" .. itemsDebug(outcomeGroup))
+      logger:Info(outcomeGroup.source .. " (" .. outcomeGroup.action .. ")" .. itemsDebug(outcomeGroup))
 
       LibLootStats:SaveOutcomeGroup(outcomeGroup)
     end
