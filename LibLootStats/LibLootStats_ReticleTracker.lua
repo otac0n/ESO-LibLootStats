@@ -70,12 +70,27 @@ function ReticleTracker:CreateCurrentTarget()
     fishingLure = nil
   end
 
-  local socialClass
+  local socialClass, blockedReason
   if additionalInteractInfo == ADDITIONAL_INTERACT_INFO_PICKPOCKET_CHANCE then
     local isInBonus, isHostile, percentChance, difficulty, isEmpty, prospectiveResult, monsterSocialClassString, monsterSocialClass = GetGameCameraPickpocketingBonusInfo()
     socialClass = monsterSocialClassString
+    if interactionBlocked then
+      if isEmpty and prospectiveResult ~= PROSPECTIVE_PICKPOCKET_RESULT_CAN_ATTEMPT then
+        blockedReason = GetString(SI_JUSTICE_PICKPOCKET_TARGET_EMPTY)
+      else
+        blockedReason = GetString("SI_PROSPECTIVEPICKPOCKETRESULT", prospectiveResult)
+      end
+    end
   else
     socialClass = nil
+  end
+
+  if interactionBlocked and blockedReason == nil then
+    if additionalInteractInfo == ADDITIONAL_INTERACT_INFO_EMPTY then
+      blockedReason = GetString(SI_GAME_CAMERA_ACTION_EMPTY)
+    elseif IsPlayerMoving() then
+      blockedReason = GetString(SI_KEYBINDINGS_CATEGORY_MOVEMENT)
+    end
   end
 
   local lockQuality
@@ -90,6 +105,7 @@ function ReticleTracker:CreateCurrentTarget()
     questInteraction = questInteraction,
     interaction = interaction,
     interactionBlocked = interactionBlocked,
+    blockedReason = blockedReason,
     additionalInteractInfo = additionalInteractInfo,
     questToolName = questToolName,
     fishingLure = fishingLure,
@@ -139,6 +155,11 @@ function ReticleTracker:UpdateTarget(destination, source)
   if destination.interactionBlocked ~= source.interactionBlocked then
     LibLootStats.logger:Debug("interactionBlocked: ", destination.interactionBlocked, " => ", source.interactionBlocked)
     destination.interactionBlocked = source.interactionBlocked
+  end
+
+  if destination.blockedReason ~= source.blockedReason then
+    LibLootStats.logger:Debug("blockedReason: ", destination.blockedReason, " => ", source.blockedReason)
+    destination.blockedReason = source.blockedReason
   end
 
   if (destination.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_FISHING_NODE and source.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_NONE) then
