@@ -125,10 +125,14 @@ local itemIdVector = {
   [125470] = setCrownItemScroll, -- Instant All Research
   [134583] = setCrownItem,       -- Transmutation Geode (Common)
   [134590] = setCrownItem,       -- Transmutation Geode (Epic)
+  [134618] = setCrownItem,       -- Transmutation Geode (Legendary),  |H0:item:134618:124:1:0:0:0:5:10000:0:0:0:0:0:0:1:0:0:1:0:0:0|h|h instead of |H1:item:134618:124:1:0:0:0:5:10000:0:0:0:0:0:0:0:0:0:0:0:0:0|h|h (Maybe?)
   [135110] = setCrownItemScroll, -- Crown Experience Scroll (Character Bound)
   [135121] = setCrownItem6,      -- Crown Lethal Poison (Character Bound)
   [135128] = setCrownItemScroll, -- Skill Respecification Scroll (Character Bound)
   [135130] = setCrownItemScroll, -- Attribute Respecification Scroll (Character Bound)
+  [140252] = setCrownItem,       -- Battlemaster Rivyn's Reward Box,  |H0:item:140252:123:1:0:0:0:0:0:0:0:0:0:0:0:1:0:0:1:0:0:0|h|h instead of |H0:item:140252:123:50:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0|h|h
+  [147557] = setCrownItem,       -- Bound Style Page: Fire Drake Axe, |H0:item:147557:124:1:0:0:0:0:0:0:0:0:0:0:0:1:0:0:1:0:0:0|h|h instead of |H0:item:147557:124:50:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0|h|h
+  [190009] = setCrownItem,       -- Rewards for the Worthy,           |H0:item:190009:122:1:0:0:0:0:0:0:0:0:0:0:0:1:0:0:1:0:0:0|h|h instead of |H0:item:190009:122:50:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0|h|h
 }
 
 function LibLootStats:GetItemId(itemLink)
