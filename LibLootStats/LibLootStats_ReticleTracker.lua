@@ -126,13 +126,14 @@ function ReticleTracker:ReacquireOrInstallTarget(newTarget)
 end
 
 function ReticleTracker:UpdateTarget(destination, source)
-  if destination.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_LOCKED and source.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_NONE then
-    -- Keep the interaction the same.
-  else
-    if destination.interaction ~= source.interaction then
-      LibLootStats.logger:Debug("interaction: ", destination.interaction, " => ", source.interaction)
-      destination.interaction = source.interaction
+  if destination.interaction ~= source.interaction then
+    if destination.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_LOCKED and source.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_NONE then
+      -- Save the original the interaction.
+      LibLootStats.logger:Debug("originalInteraction: ", destination.interaction)
+      destination.originalInteraction = destination.interaction
     end
+    LibLootStats.logger:Debug("interaction: ", destination.interaction, " => ", source.interaction)
+    destination.interaction = source.interaction
   end
 
   if destination.interactionBlocked ~= source.interactionBlocked then
@@ -140,8 +141,7 @@ function ReticleTracker:UpdateTarget(destination, source)
     destination.interactionBlocked = source.interactionBlocked
   end
 
-  if (destination.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_FISHING_NODE and source.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_NONE) or
-     (destination.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_LOCKED and source.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_NONE) then
+  if (destination.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_FISHING_NODE and source.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_NONE) then
     -- Keep the additionalInteractInfo the same.
   else
     if destination.additionalInteractInfo ~= source.additionalInteractInfo then
@@ -150,7 +150,7 @@ function ReticleTracker:UpdateTarget(destination, source)
     end
   end
 
-  if destination.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_FISHING_NODE and source.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_NONE and source.fishingLure == nil then
+  if destination.fishingLure ~= nil and source.fishingLure == nil then
     -- Don't overwrite the bait with nil.
   else
     if destination.fishingLure ~= source.fishingLure then
@@ -159,7 +159,7 @@ function ReticleTracker:UpdateTarget(destination, source)
     end
   end
 
-  if destination.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_LOCKED and source.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_NONE and source.lockQuality == nil then
+  if destination.lockQuality ~= nil and source.lockQuality == nil then
     -- Don't overwrite the lock quality with nil.
   else
     if destination.lockQuality ~= source.lockQuality then

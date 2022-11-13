@@ -243,16 +243,17 @@ function LibLootStats:GetContext()
   if not nextRemovalIsUse then
     local target = self.reticleTracker.lastTarget
     if target and target.active then
-      interactable, interaction = target.interactableName, lastDialogue or target.interaction
-      if target.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_FISHING_NODE then
+      interactable, interaction = target.interactableName, lastDialogue or target.originalInteraction or target.interaction
+      if target.fishingLure then
         context.lure = target.fishingLure
         context.angler = SkillPointLevel(89)
-      elseif target.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_PICKPOCKET_CHANCE then
+      elseif target.socialClass then
         interactable = target.socialClass
         context.cutpurse = SkillPointLevel(90)
-      elseif target.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_LOCKED then
+      elseif target.lockQuality then
         context.lock = target.lockQuality
         context.hunter = SkillPointLevel(79)
+      elseif lastDialogue then
       else
         context.harvest = SkillPointLevel(81)
         context.homemaker = SkillPointLevel(91)
