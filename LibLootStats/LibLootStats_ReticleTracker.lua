@@ -63,11 +63,9 @@ function ReticleTracker:CreateCurrentTarget()
     questToolIcon, stack, _, questToolName, questItemId = GetQuestToolInfo(questJournalIndex, questToolIndex)
   end
 
-  local fishingLure, socialClass
+  local fishingLure
   if additionalInteractInfo == ADDITIONAL_INTERACT_INFO_FISHING_NODE then
     fishingLure = GetFishingLure()
-  else
-    fishingLure = nil
   end
 
   local socialClass, blockedReason
@@ -81,8 +79,6 @@ function ReticleTracker:CreateCurrentTarget()
         blockedReason = GetString("SI_PROSPECTIVEPICKPOCKETRESULT", prospectiveResult)
       end
     end
-  else
-    socialClass = nil
   end
 
   if interactionBlocked and blockedReason == nil then
@@ -96,8 +92,6 @@ function ReticleTracker:CreateCurrentTarget()
   local lockQuality
   if additionalInteractInfo == ADDITIONAL_INTERACT_INFO_LOCKED then
     lockQuality = GetString("SI_LOCKQUALITY", context)
-  else
-    lockQuality = nil
   end
 
   return {
