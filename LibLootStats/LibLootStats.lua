@@ -279,22 +279,9 @@ end
 
 function LibLootStats:OnInventorySingleSlotUpdate(eventId, bagId, slotId, isNewItem, soundCategory, reason, stackCountChange)
   if isNewItem then
-    local source, action, context
     local itemLink = GetItemLink(bagId, slotId)
     inventorySnapshot[bagId][slotId] = itemLink
-
-    local activeSource = self.activeSources:FindBestSource(itemLink, stackCountChange)
-    if activeSource then
-      if activeSource.scenario == nil then
-        logger:Info("Skipping", itemLink, "from", activeSource.name, "source.")
-        return
-      end
-      source, action, context = activeSource.scenario.source, activeSource.scenario.action, activeSource.scenario.context
-    else
-      source, action, context = LibLootStats:GetContext()
-    end
-
-    LibLootStats:AddOutcome(source, action, context, itemLink, stackCountChange)
+    self:OnItemLinkAdded(itemLink, stackCountChange)
   else
     if stackCountChange < 0 then
       local itemLink = inventorySnapshot[bagId][slotId]
@@ -312,6 +299,22 @@ function LibLootStats:OnInventorySingleSlotUpdate(eventId, bagId, slotId, isNewI
     end
     inventorySnapshot[bagId][slotId] = GetItemLink(bagId, slotId)
   end
+end
+
+function LibLootStats:OnItemLinkAdded(itemLink, countDelta)
+  local activeSource = self.activeSources:FindBestSource(itemLink, countDelta)
+  local source, action, context
+  if activeSource then
+    if activeSource.scenario == nil then
+      logger:Info("Skipping", itemLink, "from", activeSource.name, "source.")
+      return
+    end
+    source, action, context = activeSource.scenario.source, activeSource.scenario.action, activeSource.scenario.context
+  else
+    source, action, context = LibLootStats:GetContext()
+  end
+
+  LibLootStats:AddOutcome(source, action, context, itemLink, countDelta)
 end
 
 function LibLootStats:OnInventoryItemUsed(eventCode, itemSoundCategory)
