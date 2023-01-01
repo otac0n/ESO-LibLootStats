@@ -519,11 +519,7 @@ function LibLootStats:AddOutcome(source, action, context, item, count)
   })
 end
 
-function LibLootStats:SaveOutcomeGroup(outcomeGroup)
-  local source = self.data.strings:GetId(outcomeGroup.source)
-  local action = self.data.strings:GetId(outcomeGroup.action)
-  local context = self.data.contexts:GetId(outcomeGroup.context)
-
+function LibLootStats:GetOutcomeId(outcomeGroup)
   local normalized = {}
   for i = 1, #outcomeGroup do
     local outcome = outcomeGroup[i]
@@ -532,7 +528,15 @@ function LibLootStats:SaveOutcomeGroup(outcomeGroup)
   end
   table.sort(normalized, function(a, b) return a.item < b.item end)
 
-  local outcome = self.data.outcomes:GetId(normalized)
+  return self.data.outcomes:GetId(normalized)
+end
+
+function LibLootStats:SaveOutcomeGroup(outcomeGroup)
+  local source = self.data.strings:GetId(outcomeGroup.source)
+  local action = self.data.strings:GetId(outcomeGroup.action)
+  local context = self.data.contexts:GetId(outcomeGroup.context)
+
+  local outcome = self:GetOutcomeId(outcomeGroup)
 
   local scenario = ScenarioToKey({
     source = source,
