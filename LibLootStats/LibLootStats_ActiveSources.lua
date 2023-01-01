@@ -10,9 +10,8 @@ function activeSources:AddSource(source)
   end
 end
 
-local transientId = 1
-function activeSources:AddTransientSource(name, scenario, options)
-  LibLootStats.logger:Debug("AddTransientSource(name: " , name, ", source: " , scenario.source, ", action: " , scenario.action, ")")
+function activeSources:AddNamedSource(name, scenario, options)
+  LibLootStats.logger:Debug("AddNamedSource(name: " , name, ")")
   local source = {
     name = name,
     scenario = scenario,
@@ -20,14 +19,23 @@ function activeSources:AddTransientSource(name, scenario, options)
 
   if options then
     source.items = options.items
+    source.remove = options.remove
   end
 
-  local remove = options.remove or function() end
+  self:AddSource(source)
+  return source
+end
+
+local transientId = 1
+function activeSources:AddTransientSource(name, scenario, options)
+  LibLootStats.logger:Debug("AddTransientSource(name: " , name, ", source: " , scenario.source, ", action: " , scenario.action, ")")
+  local source = self:AddNamedSource(name, scenario, options)
+
+  local remove = source.remove or function() end
   local namespace = LibLootStats.ADDON_NAME .. ".TransientSource." .. transientId
   transientId = transientId + 1
   source.remove = function() EVENT_MANAGER:UnregisterForUpdate(namespace) remove() end
 
-  self:AddSource(source)
   EVENT_MANAGER:RegisterForUpdate(namespace, (options and options.delay) or 0, function()
     self:RemoveSource(source)
   end)
