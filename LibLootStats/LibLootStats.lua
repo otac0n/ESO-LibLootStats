@@ -18,6 +18,7 @@ end
 
 function LibLootStats:InitializeHooks()
   LibLootStats.reticleTracker:InitializeHooks()
+  LibLootStats.craftingTracker:InitializeHooks()
   local namespace = LibLootStats.ADDON_NAME
   EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_ITEM_DESTROYED, self.utils.Bind(self, self.OnInventoryItemDestroyed))
   EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_ITEM_USED, self.utils.Bind(self, self.OnInventoryItemUsed))
@@ -237,6 +238,7 @@ local function SkillPointLevel(skillPointId)
     end
   end
 end
+LibLootStats.SkillPointLevel = SkillPointLevel
 
 function LibLootStats:GetContext()
   local interactable, interaction, context = nil, nil, {}
