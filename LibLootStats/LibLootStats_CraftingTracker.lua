@@ -40,6 +40,7 @@ function CraftingTracker:SendDeconstructMessage()
     source = "|LLS:out:" .. tostring(LibLootStats:GetOutcomeId(sourceGroup, maintainOrder)) .. "|",
     action = GetString(SI_INTERACT_OPTION_UNIVERSAL_DECONSTRUCTION),
     context = self:GetContext(),
+    maintainOrder = maintainOrder,
   }
   self.sent = {
     scenario = scenario,

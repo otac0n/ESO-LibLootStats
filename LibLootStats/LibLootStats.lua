@@ -240,7 +240,7 @@ local function SkillPointLevel(skillPointId)
 end
 LibLootStats.SkillPointLevel = SkillPointLevel
 
-function LibLootStats:GetContext()
+function LibLootStats:GetScenario()
   local interactable, interaction, context = nil, nil, {}
   if not nextRemovalIsUse then
     local target = self.reticleTracker.lastTarget
@@ -263,7 +263,7 @@ function LibLootStats:GetContext()
       context.zoneId = GetZoneId(GetUnitZoneIndex("player"))
     end
   end
-  return interactable, interaction, context
+  return { source = interactable, action = interaction, context = context }
 end
 
 local inventorySnapshot = {}
@@ -305,18 +305,18 @@ end
 
 function LibLootStats:OnItemLinkAdded(itemLink, countDelta)
   local activeSource = self.activeSources:FindBestSource(itemLink, countDelta)
-  local source, action, context
+  local scenario
   if activeSource then
     if activeSource.scenario == nil then
       logger:Info("Skipping", itemLink, "from", activeSource.name, "source.")
       return
     end
-    source, action, context = activeSource.scenario.source, activeSource.scenario.action, activeSource.scenario.context
+    scenario = activeSource.scenario
   else
-    source, action, context = LibLootStats:GetContext()
+    scenario = LibLootStats:GetScenario()
   end
 
-  LibLootStats:AddOutcome(source, action, context, itemLink, countDelta)
+  LibLootStats:AddOutcome(scenario, itemLink, countDelta)
 end
 
 function LibLootStats:OnInventoryItemUsed(eventCode, itemSoundCategory)
@@ -329,7 +329,7 @@ end
 
 function LibLootStats:OnUpdateLootWindow(containerName, actionName, isOwned)
   LibLootStats:ExtendOutcomeGroupLifetime()
-  local source, action, context = LibLootStats:GetContext()
+  local scenario = LibLootStats:GetScenario()
   local numLootItems = GetNumLootItems()
   for i = 1, numLootItems do
     local lootId, name, icon, count, displayQuality, value, isQuest, isStolen, lootType = GetLootItemInfo(i)
@@ -344,7 +344,7 @@ function LibLootStats:OnUpdateLootWindow(containerName, actionName, isOwned)
       isStolen = isStolen,
       lootType = lootType,
     }
-    --LibLootStats:AddOutcome(source, action, context, name, count)
+    --LibLootStats:AddOutcome(scenario, name, count)
   end
 end
 
@@ -443,7 +443,8 @@ end
 LibLootStats.ParseScenarioKey = ParseScenarioKey
 
 local outcomeGroup, extendLifetime = nil, false
-function LibLootStats:InitializeOutcomeGroup(source, action, context)
+function LibLootStats:InitializeOutcomeGroup(scenario)
+  local source, action, context = scenario.source, scenario.action, scenario.context
   EVENT_MANAGER:UnregisterForUpdate(LibLootStats.ADDON_NAME .. "CollectOutcomeGroup")
 
   if outcomeGroup and (outcomeGroup.source ~= source or outcomeGroup.action ~= action or not ContextsAreEqual(outcomeGroup.context, context)) then
@@ -456,6 +457,7 @@ function LibLootStats:InitializeOutcomeGroup(source, action, context)
       source = source,
       action = action,
       context = context,
+      maintainOrder = scenario.maintainOrder
     }
   end
 
@@ -512,8 +514,8 @@ function LibLootStats:ExtendOutcomeGroupLifetime()
   extendLifetime = true
 end
 
-function LibLootStats:AddOutcome(source, action, context, item, count)
-  LibLootStats:InitializeOutcomeGroup(source, action, context)
+function LibLootStats:AddOutcome(scenario, item, count)
+  LibLootStats:InitializeOutcomeGroup(scenario)
 
   table.insert(outcomeGroup, {
     item = item,
