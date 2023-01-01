@@ -521,14 +521,16 @@ function LibLootStats:AddOutcome(source, action, context, item, count)
   })
 end
 
-function LibLootStats:GetOutcomeId(outcomeGroup)
+function LibLootStats:GetOutcomeId(outcomeGroup, maintainOrder)
   local normalized = {}
   for i = 1, #outcomeGroup do
     local outcome = outcomeGroup[i]
     local item = self.data.strings:GetId(outcome.item)
     table.insert(normalized, { item = item, count = outcome.count })
   end
-  table.sort(normalized, function(a, b) return a.item < b.item end)
+  if not maintainOrder then
+    table.sort(normalized, function(a, b) return a.item < b.item end)
+  end
 
   return self.data.outcomes:GetId(normalized)
 end
@@ -538,7 +540,7 @@ function LibLootStats:SaveOutcomeGroup(outcomeGroup)
   local action = self.data.strings:GetId(outcomeGroup.action)
   local context = self.data.contexts:GetId(outcomeGroup.context)
 
-  local outcome = self:GetOutcomeId(outcomeGroup)
+  local outcome = self:GetOutcomeId(outcomeGroup, outcomeGroup.maintainOrder)
 
   local scenario = ScenarioToKey({
     source = source,

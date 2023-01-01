@@ -18,24 +18,26 @@ function CraftingTracker:PrepareDeconstructMessage()
 end
 
 function CraftingTracker:AddItemToDeconstructMessage(bagId, slotIndex, quantity)
-  local bag = self.pending[bagId]
-  if not bag then
-    bag = {}
-    self.pending[bagId] = bag
-  end
-  bag[slotIndex] = (bag[slotIndex] or 0) + quantity
+  table.insert(self.pending, { bagId = bagId, slotIndex = slotIndex, count = quantity })
 end
 
 function CraftingTracker:SendDeconstructMessage()
   local sourceGroup = {}
-  for bagId, bag in pairs(self.pending) do
-    for slotIndex, count in pairs(bag) do
-      table.insert(sourceGroup, { item = GetItemLink(bagId, slotIndex), count = count })
+  local indexLookup = {}
+  for _, item in ipairs(self.pending) do
+    local key = tostring(item.bagId) .. ',' .. tostring(item.slotIndex)
+    local index = indexLookup[key]
+    if index then
+      sourceGroup[index].count = (sourceGroup[index].count or 0) + item.count
+    else
+      table.insert(sourceGroup, { item = GetItemLink(item.bagId, item.slotIndex), count = item.count })
+      indexLookup[key] = #sourceGroup
     end
   end
 
+  local maintainOrder = true
   local scenario = {
-    source = "|LLS:out:" .. tostring(LibLootStats:GetOutcomeId(sourceGroup)) .. "|",
+    source = "|LLS:out:" .. tostring(LibLootStats:GetOutcomeId(sourceGroup, maintainOrder)) .. "|",
     action = GetString(SI_INTERACT_OPTION_UNIVERSAL_DECONSTRUCTION),
     context = self:GetContext(),
   }
