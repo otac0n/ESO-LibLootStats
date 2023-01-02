@@ -37,23 +37,23 @@ end
 
 local lastDialogue
 
-local currentScene, inHud, nextRemovalIsUse
+local previousScene, inHud, nextRemovalIsUse
 function LibLootStats:OnSceneStateChanged(scene, oldState, newState)
   local scene = SCENE_MANAGER:GetCurrentScene()
-  if currentScene ~= scene.name then
-    if currentScene == LOOT_SCENE.name then
+  if previousScene ~= scene.name then
+    if previousScene == LOOT_SCENE.name then
       EVENT_MANAGER:RegisterForUpdate(LibLootStats.ADDON_NAME .. "CancelLoot", 0, function()
         EVENT_MANAGER:UnregisterForUpdate(LibLootStats.ADDON_NAME .. "CancelLoot")
         nextRemovalIsUse = false
         self.reticleTracker.tracksLootWindow = not nextRemovalIsUse
-        LibLootStats:CollectOutcomeGroup()
+        LibLootStats:CollectPassiveSource()
       end)
-    elseif currentScene == ZO_INTERACTION_SYSTEM_NAME then
+    elseif previousScene == ZO_INTERACTION_SYSTEM_NAME then
       lastDialogue = nil
     end
 
-    currentScene = scene.name
-    logger:Verbose("Scene changed to: %s", currentScene)
+    logger:Verbose("Scene changed to: %s", scene.name)
+    previousScene = scene.name
   end
 end
 
