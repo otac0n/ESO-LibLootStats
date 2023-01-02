@@ -289,12 +289,12 @@ function LibLootStats:OnInventorySingleSlotUpdate(eventId, bagId, slotId, isNewI
       local itemLink = inventorySnapshot[bagId][slotId]
       if nextRemovalIsUse then
         if bagId == BAG_BACKPACK and stackCountChange == -1 then
-          LibLootStats:UpdatePendingOutcomeGroup(itemLink, GetString(SI_ITEM_ACTION_USE), {})
+          LibLootStats:UpdatePendingPassiveSource(itemLink, GetString(SI_ITEM_ACTION_USE), {})
         else
           logger:Warn("Not tracking", GetString(SI_ITEM_ACTION_USE), itemLink, "with the change count", stackCountChange)
         end
         EVENT_MANAGER:UnregisterForUpdate(LibLootStats.ADDON_NAME .. "CancelLoot")
-        LibLootStats:CollectOutcomeGroup()
+        LibLootStats:CollectPassiveSource()
         nextRemovalIsUse = false
         self.reticleTracker.tracksLootWindow = not nextRemovalIsUse
       end
@@ -316,6 +316,7 @@ function LibLootStats:OnItemLinkAdded(itemLink, countDelta)
     scenario = LibLootStats:GetScenario()
   end
 
+  scenario = LibLootStats:InitializePassiveSource(scenario)
   LibLootStats:AddOutcome(scenario, itemLink, countDelta)
 end
 
@@ -328,8 +329,8 @@ function LibLootStats:OnInventoryItemDestroyed(eventCode, itemSoundCategory)
 end
 
 function LibLootStats:OnUpdateLootWindow(containerName, actionName, isOwned)
-  LibLootStats:ExtendOutcomeGroupLifetime()
-  local scenario = LibLootStats:GetScenario()
+  LibLootStats:ExtendPassiveSourceLifetime()
+  --local scenario = LibLootStats:InitializePassiveSource(LibLootStats:GetScenario())
   local numLootItems = GetNumLootItems()
   for i = 1, numLootItems do
     local lootId, name, icon, count, displayQuality, value, isQuest, isStolen, lootType = GetLootItemInfo(i)
@@ -442,18 +443,18 @@ local function ParseScenarioKey(key)
 end
 LibLootStats.ParseScenarioKey = ParseScenarioKey
 
-local outcomeGroup, extendLifetime = nil, false
-function LibLootStats:InitializeOutcomeGroup(scenario)
+local passiveScenario, extendLifetime = nil, false
+function LibLootStats:InitializePassiveSource(scenario)
   local source, action, context = scenario.source, scenario.action, scenario.context
-  EVENT_MANAGER:UnregisterForUpdate(LibLootStats.ADDON_NAME .. "CollectOutcomeGroup")
+  EVENT_MANAGER:UnregisterForUpdate(LibLootStats.ADDON_NAME .. "CollectPassiveSource")
 
-  if outcomeGroup and (outcomeGroup.source ~= source or outcomeGroup.action ~= action or not ContextsAreEqual(outcomeGroup.context, context)) then
-    logger:Warn("Collecting existing outcome group (", outcomeGroup.source, ",", outcomeGroup.action, ",", ContextToKey(outcomeGroup.context), ") to create (", source, ",", action, ",", ContextToKey(context), ")")
-    LibLootStats:CollectOutcomeGroup()
+  if passiveScenario and (passiveScenario.source ~= source or passiveScenario.action ~= action or not ContextsAreEqual(passiveScenario.context, context)) then
+    logger:Warn("Collecting existing outcome group (", passiveScenario.source, ",", passiveScenario.action, ",", ContextToKey(passiveScenario.context), ") to create (", source, ",", action, ",", ContextToKey(context), ")")
+    LibLootStats:CollectPassiveSource()
   end
 
-  if not outcomeGroup then
-    outcomeGroup = {
+  if not passiveScenario then
+    passiveScenario = {
       source = source,
       action = action,
       context = context,
@@ -462,18 +463,27 @@ function LibLootStats:InitializeOutcomeGroup(scenario)
   end
 
   if not extendLifetime then
-    EVENT_MANAGER:RegisterForUpdate(LibLootStats.ADDON_NAME .. "CollectOutcomeGroup", 0, self.CollectOutcomeGroup)
+    EVENT_MANAGER:RegisterForUpdate(LibLootStats.ADDON_NAME .. "CollectPassiveSource", 0, self.CollectPassiveSource)
   end
+
+  return passiveScenario
 end
 
-function LibLootStats:UpdatePendingOutcomeGroup(source, action, context)
-  if outcomeGroup then
-    if outcomeGroup.source == nil and outcomeGroup.action == nil then
-      outcomeGroup.source = source
-      outcomeGroup.action = action
-      outcomeGroup.context = context
+function LibLootStats:AddOutcome(scenario, item, count)
+  table.insert(scenario, {
+    item = item,
+    count = count,
+  })
+end
+
+function LibLootStats:UpdatePendingPassiveSource(source, action, context)
+  if passiveScenario then
+    if passiveScenario.source == nil and passiveScenario.action == nil then
+      passiveScenario.source = source
+      passiveScenario.action = action
+      passiveScenario.context = context
     else
-      logger:Warn("Not updating the source of a pending outcome group because the source was already know: (", source, ",", action, ",", ContextToKey(context), ") would overwrite (", outcomeGroup.source, ",", outcomeGroup.action, ",", ContextToKey(outcomeGroup.context), ")")
+      logger:Warn("Not updating the source of a pending outcome group because the source was already know: (", source, ",", action, ",", ContextToKey(context), ") would overwrite (", passiveScenario.source, ",", passiveScenario.action, ",", ContextToKey(passiveScenario.context), ")")
     end
   end
 end
@@ -491,36 +501,27 @@ function itemsDebug(outcomeGroup)
 end
 LibLootStats.itemsDebug = itemsDebug
 
-function LibLootStats:CollectOutcomeGroup()
-  EVENT_MANAGER:UnregisterForUpdate(LibLootStats.ADDON_NAME .. "CollectOutcomeGroup")
+function LibLootStats:CollectPassiveSource()
+  EVENT_MANAGER:UnregisterForUpdate(LibLootStats.ADDON_NAME .. "CollectPassiveSource")
 
-  if outcomeGroup ~= nil then
-    if outcomeGroup.source == nil then
-      logger:Warn("Not saving outcome group with nil source." .. itemsDebug(outcomeGroup))
-    elseif outcomeGroup.action == nil then
-      logger:Warn("Not saving outcome group with nil action. Source was: " .. outcomeGroup.source .. itemsDebug(outcomeGroup))
+  if passiveScenario ~= nil then
+    if passiveScenario.source == nil then
+      logger:Warn("Not saving outcome group with nil source." .. itemsDebug(passiveScenario))
+    elseif passiveScenario.action == nil then
+      logger:Warn("Not saving outcome group with nil action. Source was: " .. passiveScenario.source .. itemsDebug(passiveScenario))
     else
-      logger:Info(outcomeGroup.source .. " (" .. outcomeGroup.action .. ")" .. itemsDebug(outcomeGroup))
+      logger:Info(passiveScenario.source .. " (" .. passiveScenario.action .. ")" .. itemsDebug(passiveScenario))
 
-      LibLootStats:SaveOutcomeGroup(outcomeGroup)
+      LibLootStats:SaveOutcomeGroup(passiveScenario)
     end
   end
 
-  outcomeGroup, extendLifetime = nil, false
+  passiveScenario, extendLifetime = nil, false
 end
 
-function LibLootStats:ExtendOutcomeGroupLifetime()
-  EVENT_MANAGER:UnregisterForUpdate(LibLootStats.ADDON_NAME .. "CollectOutcomeGroup")
+function LibLootStats:ExtendPassiveSourceLifetime()
+  EVENT_MANAGER:UnregisterForUpdate(LibLootStats.ADDON_NAME .. "CollectPassiveSource")
   extendLifetime = true
-end
-
-function LibLootStats:AddOutcome(scenario, item, count)
-  LibLootStats:InitializeOutcomeGroup(scenario)
-
-  table.insert(outcomeGroup, {
-    item = item,
-    count = count,
-  })
 end
 
 function LibLootStats:GetOutcomeId(outcomeGroup, maintainOrder)
