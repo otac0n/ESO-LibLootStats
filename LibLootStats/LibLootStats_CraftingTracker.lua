@@ -45,7 +45,10 @@ function CraftingTracker:SendDeconstructMessage()
   self.sent = {
     scenario = scenario,
     sourceGroup = sourceGroup,
-    activeSource = LibLootStats.activeSources:AddNamedSource("Deconstruct", scenario),
+    activeSource = LibLootStats.activeSources:AddNamedSource("Deconstruct", scenario, {
+      save = true,
+      allowEmpty = true,
+    }),
   }
 
   self.pending = nil

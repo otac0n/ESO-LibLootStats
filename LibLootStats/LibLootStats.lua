@@ -193,7 +193,7 @@ function LibLootStats:OnMailTakeAll(mailId)
         table.insert(items, { item = itemLink, count = count })
       end
 
-      local source = self.activeSources:AddTransientSource("mail", scenario, { delay = 7000, items = items })
+      local source = self.activeSources:AddTransientSource("mail", scenario, { save = true, delay = 7000, items = items })
       source.mailId = mailId
     end
   end
@@ -214,7 +214,7 @@ function LibLootStats:OnClaimCurrentDailyLoginReward()
         action = GetString(SI_DAILY_LOGIN_REWARDS_CLAIM_KEYBIND),
         context = {}
       }
-      self.activeSources:AddTransientSource("reward", scenario, { delay = 7000, items = { [1] = { item = itemLink, count = count } } })
+      self.activeSources:AddTransientSource("reward", scenario, { save = true, delay = 7000, items = { [1] = { item = itemLink, count = count } } })
     end
   end
 end
@@ -304,8 +304,8 @@ function LibLootStats:OnInventorySingleSlotUpdate(eventId, bagId, slotId, isNewI
 end
 
 function LibLootStats:OnItemLinkAdded(itemLink, countDelta)
-  local activeSource = self.activeSources:FindBestSource(itemLink, countDelta)
   local scenario
+  local activeSource = self.activeSources:FindBestSource(itemLink, countDelta)
   if activeSource then
     if activeSource.scenario == nil then
       logger:Info("Skipping", itemLink, "from", activeSource.name, "source.")
@@ -313,10 +313,9 @@ function LibLootStats:OnItemLinkAdded(itemLink, countDelta)
     end
     scenario = activeSource.scenario
   else
-    scenario = LibLootStats:GetScenario()
+    scenario = LibLootStats:InitializePassiveSource(LibLootStats:GetScenario())
   end
 
-  scenario = LibLootStats:InitializePassiveSource(scenario)
   LibLootStats:AddOutcome(scenario, itemLink, countDelta)
 end
 
@@ -454,12 +453,7 @@ function LibLootStats:InitializePassiveSource(scenario)
   end
 
   if not passiveScenario then
-    passiveScenario = {
-      source = source,
-      action = action,
-      context = context,
-      maintainOrder = scenario.maintainOrder
-    }
+    passiveScenario = scenario
   end
 
   if not extendLifetime then
@@ -510,8 +504,6 @@ function LibLootStats:CollectPassiveSource()
     elseif passiveScenario.action == nil then
       logger:Warn("Not saving outcome group with nil action. Source was: " .. passiveScenario.source .. itemsDebug(passiveScenario))
     else
-      logger:Info(passiveScenario.source .. " (" .. passiveScenario.action .. ")" .. itemsDebug(passiveScenario))
-
       LibLootStats:SaveOutcomeGroup(passiveScenario)
     end
   end
@@ -539,6 +531,8 @@ function LibLootStats:GetOutcomeId(outcomeGroup, maintainOrder)
 end
 
 function LibLootStats:SaveOutcomeGroup(outcomeGroup)
+  logger:Info(outcomeGroup.source .. " (" .. outcomeGroup.action .. ")" .. itemsDebug(outcomeGroup))
+
   local source = self.data.strings:GetId(outcomeGroup.source)
   local action = self.data.strings:GetId(outcomeGroup.action)
   local context = self.data.contexts:GetId(outcomeGroup.context)

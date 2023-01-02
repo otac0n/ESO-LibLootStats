@@ -19,7 +19,21 @@ function activeSources:AddNamedSource(name, scenario, options)
 
   if options then
     source.items = options.items
-    source.remove = options.remove
+    if options.save then
+      local remove
+      if options.allowEmpty then
+        remove = function() LibLootStats:SaveOutcomeGroup(scenario) end
+      else
+        remove = function() if #scenario >= 1 then LibLootStats:SaveOutcomeGroup(scenario) end end
+      end
+      if options.remove then
+        source.remove = function() remove() options.remove() end
+      else
+        source.remove = remove
+      end
+    else
+      source.remove = options.remove
+    end
   end
 
   self:AddSource(source)
