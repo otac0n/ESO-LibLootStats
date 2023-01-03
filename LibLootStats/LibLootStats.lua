@@ -531,7 +531,7 @@ function LibLootStats:GetOutcomeId(outcomeGroup, maintainOrder)
 end
 
 function LibLootStats:SaveOutcomeGroup(outcomeGroup)
-  logger:Info(outcomeGroup.source .. " (" .. outcomeGroup.action .. ")" .. itemsDebug(outcomeGroup))
+  logger:Info(outcomeGroup.source .. " (" .. outcomeGroup.action .. ") @" .. ContextToKey(outcomeGroup.context) .. itemsDebug(outcomeGroup))
 
   local source = self.data.strings:GetId(outcomeGroup.source)
   local action = self.data.strings:GetId(outcomeGroup.action)

@@ -77,7 +77,7 @@ function CraftingTracker:GetContext()
   for k,v in pairs(extract) do
     local bonus = GetNonCombatBonus(v)
     if bonus > 0 then
-      context[k] = bonus
+      context[k] = bonus - 1
     end
   end
   return context
