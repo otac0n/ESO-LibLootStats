@@ -24,6 +24,7 @@ function LibLootStats:InitializeHooks()
   EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_ITEM_USED, self.utils.Bind(self, self.OnInventoryItemUsed))
   EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_FULL_UPDATE, self.utils.Bind(self, self.OnInventoryFullUpdate))
   EVENT_MANAGER:RegisterForEvent(namespace, EVENT_INVENTORY_SINGLE_SLOT_UPDATE, self.utils.Bind(self, self.OnInventorySingleSlotUpdate))
+  EVENT_MANAGER:RegisterForEvent(namespace, EVENT_QUEST_TOOL_UPDATED, self.utils.Bind(self, self.OnQuestToolUpdate))
   ZO_PreHook("ZO_MailInboxShared_TakeAll", self.utils.Bind(self, self.OnMailTakeAll))
   ZO_PreHook("ClaimCurrentDailyLoginReward", self.utils.Bind(self, self.OnClaimCurrentDailyLoginReward))
   ZO_PreHook(SCENE_MANAGER, "OnSceneStateChange", self.utils.Closure(self, self.OnSceneStateChanged))
@@ -276,6 +277,14 @@ function LibLootStats:OnInventoryFullUpdate(eventId, bagId, slotId, isNewItem, s
     for slotId = 1, GetBagSize(i) do
       inventorySnapshot[i][slotId] = GetItemLink(i, slotId)
     end
+  end
+end
+
+function LibLootStats:OnQuestToolUpdate(eventId, journalIndex, questName, countDelta, iconFilename, questItemId, name, ...)
+  local itemLink = "|H0:quest_item:" .. questItemId .. "|h|h"
+  if countDelta > 0 then
+    logger:Debug("Added", itemLink, "(" .. countDelta .. ")")
+    self:OnItemLinkAdded(itemLink, countDelta)
   end
 end
 
