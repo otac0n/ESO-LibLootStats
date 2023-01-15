@@ -12,7 +12,8 @@ local function MakeLookup(source, toKey, fromKey)
   if toKey then
     if fromKey then
       lookup.idToItem = {}
-      for id, key in ipairs(source) do
+      lookup.source = source
+      for id, key in pairs(source) do
         local item = fromKey(key)
         lookup.itemToId[key] = id
         lookup.idToItem[id] = item
@@ -31,7 +32,7 @@ local function MakeLookup(source, toKey, fromKey)
         return id
       end
     else
-      for id, item in ipairs(source) do
+      for id, item in pairs(source) do
         local key = toKey(item)
         lookup.itemToId[key] = id
       end
@@ -49,7 +50,7 @@ local function MakeLookup(source, toKey, fromKey)
       end
     end
   else
-    for id, item in ipairs(source) do
+    for id, item in pairs(source) do
       lookup.itemToId[item] = id
     end
 
