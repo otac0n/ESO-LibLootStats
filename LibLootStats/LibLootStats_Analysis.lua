@@ -44,7 +44,11 @@ function LibLootStats:FindDeconstructionExpectation(itemLink)
   self:EnumerateScenarios(
     Filter.SourceItems(Filter.All(function (item, count) return item == itemLink end)),
     function (scenario, count)
-      samples = samples + count
+      for _, pair in ipairs(scenario.sourceItems) do
+        --if pair.item == itemLink then
+        samples = samples + (pair.count * count)
+        --end
+      end
       for _, pair in ipairs(scenario.outcome) do
         results[pair.item] = (results[pair.item] or 0) + (pair.count * count)
       end
