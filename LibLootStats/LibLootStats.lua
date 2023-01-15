@@ -322,7 +322,26 @@ function LibLootStats:OnItemLinkAdded(itemLink, countDelta)
     end
     scenario = activeSource.scenario
   else
-    scenario = LibLootStats:InitializePassiveSource(LibLootStats:GetScenario())
+    local filledSoulGem = false
+
+    if itemLink == "|H0:item:33271:31:50:0:0:0:0:0:0:0:0:0:0:0:0:36:0:0:0:0:0|h|h" then
+      for i = 1, GetNumBuffs("player") do
+        local _, _, _, _, stackCount, _, buffType, effectType, abilityType, statusEffectType, abilityId, _, _ = GetUnitBuffInfo("player", i)
+        if abilityType == ABILITY_TYPE_FILLSOULGEM then
+          scenario = LibLootStats:InitializePassiveSource({
+            source = GetString("SI_ITEMTYPE", ITEMTYPE_SOUL_GEM),
+            action = GetString(SI_SOUL_GEM_FILLED),
+            context = {}
+          })
+          filledSoulGem = true
+          break
+        end
+      end
+    end
+
+    if not filledSoulGem then
+      scenario = LibLootStats:InitializePassiveSource(LibLootStats:GetScenario())
+    end
   end
 
   LibLootStats:AddOutcome(scenario, itemLink, countDelta)
