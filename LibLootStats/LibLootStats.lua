@@ -428,7 +428,9 @@ local function ParseOutcomeKey(key)
   local e, l = 0, string.len(key)
   while e < l do
     local a, b, c = e, string.find(key, "*", e), string.find(key, "+", e + 1) or l + 1
-    table.insert(outcome, { item = tonumber(string.sub(key, a + 1, b - 1)), count = tonumber(string.sub(key, b + 1, c - 1)) })
+    local item = string.sub(key, a + 1, b - 1)
+    local count = string.sub(key, b + 1, c - 1)
+    table.insert(outcome, { item = tonumber(item) or item, count = tonumber(count) or count })
     e = c
   end
   return outcome
