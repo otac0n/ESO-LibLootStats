@@ -32,9 +32,12 @@ function Caches.LookupOutcome(id)
     local outcome = outcomes[id]
     if not outcome then
         local shallow = LibLootStats.data.outcomes:GetValue(id)
-        outcome = {}
+        outcome = {
+            id = id,
+        }
         for i, pair in ipairs(shallow) do
             outcome[i] = {
+                itemId = pair.item,
                 item = LibLootStats.data.strings:GetValue(pair.item),
                 count = pair.count,
             }
@@ -50,13 +53,17 @@ function Caches.LookupScenario(key)
         scenario = LibLootStats.ParseScenarioKey(key)
 
         scenario.key = key
-        scenario.source = LibLootStats.data.strings:GetValue(scenario.source)
-        scenario.action = LibLootStats.data.strings:GetValue(scenario.action)
+
+        scenario.sourceId = scenario.source
+        scenario.source = LibLootStats.data.strings:GetValue(scenario.sourceId)
         local sourceOutcomeId = GetOutcomeId(scenario.source)
         if sourceOutcomeId then
             scenario.sourceOutcomeId = sourceOutcomeId
             scenario.sourceItems = Caches.LookupOutcome(sourceOutcomeId)
         end
+
+        scenario.actionId = scenario.action
+        scenario.action = LibLootStats.data.strings:GetValue(scenario.actionId)
 
         scenario.contextId = scenario.context
         scenario.context = LibLootStats.data.contexts:GetValue(scenario.contextId)
