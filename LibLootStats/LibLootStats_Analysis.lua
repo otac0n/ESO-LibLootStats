@@ -19,6 +19,46 @@ function LibLootStats:EnumerateScenarios(...)
     end
 end
 
+function LibLootStats:Find(name, caseSensitive)
+    local filter
+    if not caseSensitive then
+        filter = Filter.ToLower(Filter.LibTextFilter(name:lower()))
+    else
+        filter = Filter.LibTextFilter(name)
+    end
+    return self:FindScenarios(Filter.AnyTextField(filter))
+end
+
+function LibLootStats:FindScenarios(...)
+    local results = {}
+    self:EnumerateScenarios(..., function (scenario, count)
+        results[scenario.key] = scenario
+    end)
+    return results
+end
+
+function LibLootStats:FindDeconstructionExpectation(itemLink)
+    itemLink = LibLootStats:CanonicalizeItemLink(itemLink)
+    local samples = 0
+    local results = {}
+    self:EnumerateScenarios(
+        Filter.SourceItems(Filter.All(function (item, count) return item == itemLink end)),
+        function (scenario, count)
+            samples = samples + count
+            for _, pair in ipairs(scenario.outcome) do
+                results[pair.item] = (results[pair.item] or 0) + (pair.count * count)
+            end
+        end
+    )
+    local expectation = {
+        samples = samples
+    }
+    for item, count in pairs(results) do
+        table.insert(expectation, { item = item, count = count / samples })
+    end
+    return expectation
+end
+
 local function GetOutcomeId(outcomeLink)
     if outcomeLink then
         local outcome = string.match(outcomeLink, "^|LLS:out:(%d+)|$")
@@ -156,7 +196,33 @@ function Filter.Source(filter)
     end
 end
 
-local function itemsFilter(itemFilter)
+function Filter.SourceItems(filter)
+    return function (scenario)
+        return scenario.sourceItems and filter(scenario.sourceItems) or false
+    end
+end
+
+function Filter.OutcomeItems(filter)
+    return function (scenario)
+        return filter(scenario.outcome)
+    end
+end
+
+function Filter.AnySourceItem(filter)
+    local inner = Filter.Any(filter)
+    return function (scenario)
+        return inner(scenario.sourceItems)
+    end
+end
+
+function Filter.AnyOutcomeItem(filter)
+    local inner = Filter.Any(filter)
+    return function (scenario)
+        return inner(scenario.outcome)
+    end
+end
+
+function Filter.Any(itemFilter)
     return function (items)
         if items then
             for _, row in ipairs(items) do
@@ -169,17 +235,16 @@ local function itemsFilter(itemFilter)
     end
 end
 
-function Filter.SourceItems(filter)
-    local inner = itemsFilter(filter)
-    return function (scenario)
-        return inner(scenario.sourceItems)
-    end
-end
-
-function Filter.OutcomeItems(filter)
-    local inner = itemsFilter(filter)
-    return function (scenario)
-        return inner(scenario.outcome)
+function Filter.All(itemFilter)
+    return function (items)
+        if items then
+            for _, row in ipairs(items) do
+                if not itemFilter(row.item, row.count) then
+                    return false
+                end
+            end
+        end
+        return true
     end
 end
 
@@ -189,29 +254,11 @@ function Filter.ItemName(filter)
     end
 end
 
-function Filter.FullTextSearch(filter)
+function Filter.AnyTextField(filter)
     return Filter.Or(
         Filter.Source(filter),
-        Filter.SourceItems(Filter.ItemName(filter)),
+        Filter.AnySourceItem(Filter.ItemName(filter)),
         Filter.Action(filter),
-        Filter.OutcomeItems(Filter.ItemName(filter))
+        Filter.AnyOutcomeItem(Filter.ItemName(filter))
     )
-end
-
-function LibLootStats:Find(name, caseSensitive)
-    local filter
-    if not caseSensitive then
-        filter = Filter.ToLower(Filter.LibTextFilter(name:lower()))
-    else
-        filter = Filter.LibTextFilter(name)
-    end
-    return self:FindScenarios(Filter.FullTextSearch(filter))
-end
-
-function LibLootStats:FindScenarios(filter)
-    local results = {}
-    LibLootStats:EnumerateScenarios(filter, function (scenario, count)
-        results[scenario.key] = scenario
-    end)
-    return results
 end
