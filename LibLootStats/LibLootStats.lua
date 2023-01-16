@@ -34,6 +34,7 @@ function LibLootStats:InitializeHooks()
     local option = ZO_InteractWindowPlayerAreaOptions:GetChild(i)
     ZO_PreHookHandler(option, "OnMouseUp", function(...) self:OnChatterOptionMouseUp(option, ...) end)
   end
+  SLASH_COMMANDS["/loot"] = function() LootStatsWindow:SetHidden(false) end
 end
 
 local lastDialogue

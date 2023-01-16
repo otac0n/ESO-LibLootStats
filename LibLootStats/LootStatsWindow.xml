@@ -1,0 +1,56 @@
+<GuiXml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sir.insidi.at/or/schema/esoui.xsd">
+  <Controls>
+    <TopLevelControl name="LootStatsWindow" mouseEnabled="true" movable="true" hidden="true" resizeHandleSize="8">
+      <OnResizeStop>LibLootStats:SaveUISettings()</OnResizeStop>
+      <OnMoveStop>LibLootStats:SaveUISettings()</OnMoveStop>
+      <Anchor point="TOPLEFT" relativeTo="GUI_ROOT" relativePoint="TOPLEFT"/>
+      <DimensionConstraints minX="600" minY="300"/>
+      <Controls>
+        <Backdrop name="$(parent)BG" inherits="ZO_DefaultBackdrop">
+          <AnchorFill/>
+        </Backdrop>
+
+        <Control name="$(parent)Top" resizeToFitDescendents="true">
+          <Anchor point="TOPLEFT" relativePoint="TOPLEFT" offsetX="8" offsetY="8"/>
+          <Anchor point="TOPRIGHT" relativePoint="TOPRIGHT" offsetX="-8" offsetY="8"/>
+          <Controls>
+            <Button name="$(parent)_Close">
+              <OnMouseUp>LootStatsWindow:SetHidden(true)</OnMouseUp>
+              <Anchor point="TOPRIGHT" relativePoint="TOPRIGHT"/>
+              <Dimensions x="25" y="25"/>
+              <Textures
+                normal="EsoUI/art/buttons/decline_up.dds"
+                pressed="EsoUI/art/buttons/decline_down.dds"
+                mouseOver="EsoUI/art/buttons/decline_over.dds"/>
+            </Button>
+            <Label name="$(parent)_Title" text="LibLootStats" font="ZoFontGameSmall" horizontalAlignment="CENTER">
+              <Anchor point="TOPLEFT" relativePoint="TOPLEFT"/>
+              <Anchor point="RIGHT" relativePoint="LEFT" relativeTo="$(parent)_Close" offsetX="-4"/>
+            </Label>
+          </Controls>
+        </Control>
+
+        <Control name="$(parent)MainPanel">
+          <Anchor point="TOPLEFT" relativePoint="BOTTOMLEFT" relativeTo="$(parent)Top" offsetX="0" offsetY="4"/>
+          <Anchor point="BOTTOMLEFT" relativePoint="BOTTOMLEFT" offsetX="8" offsetY="-8"/>
+          <Dimensions x="300"/>
+          <Controls>
+            <Backdrop name="$(parent)BG" inherits="ZO_DefaultBackdrop">
+              <AnchorFill/>
+            </Backdrop>
+          </Controls>
+        </Control>
+
+        <Control name="$(parent)RightPanel">
+          <Anchor point="TOPRIGHT" relativePoint="BOTTOMRIGHT" relativeTo="$(parent)Top" offsetX="0" offsetY="4"/>
+          <Anchor point="BOTTOMLEFT" relativePoint="BOTTOMRIGHT" relativeTo="$(parent)MainPanel" offsetX="4" offsetY="0"/>
+          <Controls>
+            <Backdrop name="$(parent)BG" inherits="ZO_DefaultBackdrop">
+              <AnchorFill/>
+            </Backdrop>
+          </Controls>
+        </Control>
+      </Controls>
+    </TopLevelControl>
+  </Controls>
+</GuiXml>

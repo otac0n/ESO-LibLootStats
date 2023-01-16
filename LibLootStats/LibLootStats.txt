@@ -7,7 +7,7 @@
 ## Title: LibLootStats
 ## APIVersion: 101036
 ## Version: 1.0
-## SavedVariables: LibLootStats_Settings LibLootStats_Strings LibLootStats_Outcomes LibLootStats_Contexts LibLootStats_Scenarios
+## SavedVariables: LibLootStats_Settings LibLootStats_UI LibLootStats_Strings LibLootStats_Outcomes LibLootStats_Contexts LibLootStats_Scenarios
 ## Author: otac0n
 ## Description: Collect stats about containers and nodes that you use.
 ## OptionalDependsOn:
@@ -23,3 +23,4 @@ LibLootStats_CraftingTracker.lua
 LibLootStats_ActiveSources.lua
 LibLootStats_Analysis.lua
 LibLootStats.lua
+LootStatsWindow.xml

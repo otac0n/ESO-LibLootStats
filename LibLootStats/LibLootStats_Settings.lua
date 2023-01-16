@@ -73,11 +73,13 @@ local function MakeLookup(source, toKey, fromKey)
   return lookup
 end
 
+local ui
 function LibLootStats:InitializeSettings()
   LibLootStats.collectionVars = LibSavedVars
     :NewAccountWide(LibLootStats.ADDON_NAME.."_Settings", "Collection_Account", defaultCollectionVars)
     :AddCharacterSettingsToggle(LibLootStats.ADDON_NAME.."_Settings", "Collection_Character")
     :EnableDefaultsTrimming()
+  ui = ZO_SavedVars:NewAccountWide(LibLootStats.ADDON_NAME.."_UI", 1, nil, { window = "" })
   local strings = ZO_SavedVars:NewAccountWide(LibLootStats.ADDON_NAME.."_Strings", 1, nil, { lookup = {} })
   local contexts = ZO_SavedVars:NewAccountWide(LibLootStats.ADDON_NAME.."_Contexts", 1, nil, { lookup = {} })
   local outcomes = ZO_SavedVars:NewAccountWide(LibLootStats.ADDON_NAME.."_Outcomes", 1, nil, { lookup = {} })
@@ -88,4 +90,26 @@ function LibLootStats:InitializeSettings()
     outcomes = MakeLookup(outcomes.lookup, self.OutcomeToKey, self.ParseOutcomeKey),
     scenarios = scenarios.data
   }
+  LibLootStats:ApplyUISettings()
+end
+
+local function LoadControlPosition(ctl, settings)
+  local w, h, l, t = string.match(settings or "", "^(%d*%.?%d+)%*(%d*%.?%d+)%@(-?%d*%.?%d+)%,(-?%d*%.?%d+)$")
+  ctl:SetWidth(tonumber(w))
+  ctl:SetHeight(tonumber(h))
+  ctl:SetAnchorOffsets(tonumber(l), tonumber(t))
+end
+
+local function SaveControlPosition(ctl)
+  local w, h = ctl:GetWidth(), ctl:GetHeight()
+  local l, t = ctl:GetLeft(), ctl:GetTop()
+  return w .. "*" .. h .. "@" .. l .. "," .. t
+end
+
+function LibLootStats:ApplyUISettings()
+  LoadControlPosition(LootStatsWindow, ui.window)
+end
+
+function LibLootStats:SaveUISettings()
+  ui.window = SaveControlPosition(LootStatsWindow)
 end
