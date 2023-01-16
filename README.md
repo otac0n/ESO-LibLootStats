@@ -10,7 +10,8 @@ Doesn't Track
 * Excavation
 * Quest Items
 * Leads
-* Character?
+* Character, Race, Date/Time
+* Leveling Rewards
 * Long Term
   - Consumed Items (improvement, filling gems, constructed items, quest items, containers, etc.)
   - Improvement (including failure)
@@ -18,8 +19,8 @@ Doesn't Track
   - Track Companion levels when looting chests and pickpocketing
   - Track chest difficulty
   - Treasure Map -> Dirt Mound -> Treasure Chest -> Lead (etc.) -> Motif (etc.)
-  - Monster Class -> Assasination -> Loot
-  - Constructed (mats) -> Improvement (mats) -> Enchant (glyph) -> Use -> Repair (gem) -> Decon (mats)
+  - Monster Class -> Assasination -> Loot -> Laundered -> ...
+  - Constructed (mats) -> Improvement (mats) -> Enchant (glyph) -> Bind -> Use -> Repair (gem) -> Decon (mats)
 
 Known Bugs:
 * Looking at another node while looting a Heavy Sack (or similar short lived node) will record the other node as returning the resources.
