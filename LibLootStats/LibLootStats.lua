@@ -463,7 +463,7 @@ end
 LibLootStats.ScenarioToKey = ScenarioToKey
 
 local function ParseScenarioKey(key)
-  local _, _, source, action, context, outcome = string.find(key, "^(%d+)%/(%d+)%@(%d+)%>(%d+)$")
+  local source, action, context, outcome = string.match(key, "^(%d+)%/(%d+)%@(%d+)%>(%d+)$")
   return {
     source = tonumber(source),
     action = tonumber(action),
