@@ -67,7 +67,7 @@ function LibLootStats:OnChatterOptionMouseUp(option)
   lastDialogue = option:GetText()
 end
 
-local clearSubtypeAndLevel = { [4] = "0", [5] = "0" }
+local clearSubtypeAndLevel = { [3] = "0", [4] = "0" }
 
 local itemTypeVector = {
   [ITEMTYPE_ARMOR_BOOSTER] = clearSubtypeAndLevel,
@@ -100,13 +100,12 @@ local itemTypeVector = {
   [ITEMTYPE_WOODWORKING_RAW_MATERIAL] = clearSubtypeAndLevel,
 }
 
-local setCrownItemMat    = {                         [17] = "1", [20] = "1" }
-local setCrownItem       = {              [5] = "1", [17] = "1", [20] = "1" }
-local setCrownItem6      = { [4] = "6",   [5] = "1", [17] = "1", [20] = "1" }
-local setCrownItem32     = { [4] = "32",  [5] = "1", [17] = "1", [20] = "1" }
-local setCrownItem122    = { [4] = "122", [5] = "1", [17] = "1", [20] = "1" }
-local setCrownItem123    = { [4] = "123", [5] = "1", [17] = "1", [20] = "1" }
-local setCrownItemScroll = { [4] = "124", [5] = "1", [17] = "1", [20] = "1" }
+local setCrownItem       = {              [4] = "1" }
+local setCrownItem6      = { [3] = "6",   [4] = "1" }
+local setCrownItem32     = { [3] = "32",  [4] = "1" }
+local setCrownItem122    = { [3] = "122", [4] = "1" }
+local setCrownItem123    = { [3] = "123", [4] = "1" }
+local setCrownItemScroll = { [3] = "124", [4] = "1" }
 
 local itemIdVector = {
   [61079]  = setCrownItem122,    -- Crown Repair Kit
@@ -119,7 +118,6 @@ local itemIdVector = {
   [64702]  = setCrownItem6,      -- Crown Lesson: Riding Capactity
   [64710]  = setCrownItem123,    -- Crown Tri-Restoration Potion
   [64711]  = setCrownItem123,    -- Crown Fortifying Meal
-  [71668]  = setCrownItemMat,    -- Crown Mimic Stone
   [79690]  = setCrownItem6,      -- Crown Lethal Poison
   [94441]  = setCrownItemScroll, -- Grand Gold Coast Experience Scroll
   [125450] = setCrownItemScroll, -- Instant Blacksmithing Research
@@ -138,35 +136,68 @@ local itemIdVector = {
   [190009] = setCrownItem,       -- Rewards for the Worthy,           |H0:item:190009:122:1:0:0:0:0:0:0:0:0:0:0:0:1:0:0:1:0:0:0|h|h instead of |H0:item:190009:122:50:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0|h|h
 }
 
-function LibLootStats:GetItemId(itemLink)
-  local match = string.match(itemLink, "item:(%d+):")
-  if match then
-    return tonumber(match)
-  end
+local function ParseItemLink(itemLink)
+  return {string.match(itemLink, "^|H(%d):item:(%d+):(%d+):(%d+):(%d+):(%d+):(%d+):(%d+):(%d+):(%d+):(%d+):(%d+):(%d+):(%d+):(%d+):(%d+):(%d+):(%d+):(%d+):(%d+):(%d+):(%d+)|h(.*)|h")}
 end
+LibLootStats.ParseItemLink = ParseItemLink
 
-function LibLootStats:CanonicalizeItemLink(itemLink)
-  local itemType, specializedItemType = GetItemLinkItemType(itemLink)
-  local update = itemTypeVector[itemType] or itemIdVector[self:GetItemId(itemLink)]
-  if not string.match(itemLink, "^|H0:") then
-    update = (update and {table.unpack(update)}) or {}
-    update[1] = "|H0"
+local function MakeItemLink(parts)
+  return "|H" .. parts[1] ..
+         ":item:" .. parts[2] ..
+         ":" .. parts[3] ..
+         ":" .. parts[4] ..
+         ":" .. parts[5] ..
+         ":" .. parts[6] ..
+         ":" .. parts[7] ..
+         ":" .. parts[8] ..
+         ":" .. parts[9] ..
+         ":" .. parts[10] ..
+         ":" .. parts[11] ..
+         ":" .. parts[12] ..
+         ":" .. parts[13] ..
+         ":" .. parts[14] ..
+         ":" .. parts[15] ..
+         ":" .. parts[16] ..
+         ":" .. parts[17] ..
+         ":" .. parts[18] ..
+         ":" .. parts[19] ..
+         ":" .. parts[20] ..
+         ":" .. parts[21] ..
+         ":" .. parts[22] ..
+         "|h" .. parts[23] .. "|h"
+end
+LibLootStats.MakeItemLink = MakeItemLink
+
+local function CanonicalizeItemLink(itemLink)
+  local parsed
+  if not string.match(itemLink, "^|H0:.*|h|h$") then
+    parsed = parsed or ParseItemLink(itemLink)
+    parsed[1] = "0"
+    parsed[23] = ""
   end
+
+  local bindType = GetItemLinkBindType(itemLink)
+  if bindType == BIND_TYPE_ON_PICKUP or bindType == BIND_TYPE_ON_PICKUP_BACKPACK then
+    parsed = parsed or ParseItemLink(itemLink)
+    parsed[19] = "1"
+    parsed[16] = tostring(BitOr(tonumber(parsed[16]), 1))
+  end
+
+  local itemType, _ = GetItemLinkItemType(itemLink)
+  local update = itemTypeVector[itemType] or itemIdVector[GetItemLinkItemId(itemLink)]
   if update then
-    itemLink = self:UpdateItemLink(itemLink, update)
+    parsed = parsed or ParseItemLink(itemLink)
+    for i, v in pairs(update) do
+      parsed[i] = v
+    end
+  end
+
+  if parsed then
+    itemLink = MakeItemLink(parsed)
   end
   return itemLink
 end
-
-function LibLootStats:UpdateItemLink(itemLink, updates)
-  local updated = ""
-  local i = 1
-  for v in string.gmatch(itemLink, "[^:]+") do
-    updated = updated .. (updated ~= "" and ":" or "") .. (updates[i] or v)
-    i = i + 1
-  end
-  return updated
-end
+LibLootStats.CanonicalizeItemLink = CanonicalizeItemLink
 
 function LibLootStats:OnMailTakeAll(mailId)
   local senderDisplayName, senderCharacterName, subject, icon, unread, fromSystem, fromCS, returned, numAttachments, attachedMoney, codAmount, expiresInDays, secsSinceReceived = GetMailItemInfo(mailId)
@@ -191,7 +222,7 @@ function LibLootStats:OnMailTakeAll(mailId)
       local items = {}
       for i = 1, numAttachments do
         local icon, count, creator = GetAttachedItemInfo(mailId, i)
-        local itemLink = self:CanonicalizeItemLink(GetAttachedItemLink(mailId, i))
+        local itemLink = CanonicalizeItemLink(GetAttachedItemLink(mailId, i))
         table.insert(items, { item = itemLink, count = count })
       end
 
@@ -210,7 +241,7 @@ function LibLootStats:OnClaimCurrentDailyLoginReward()
       local currentMonth = GetCurrentDailyLoginMonth()
       local currentESOMonthName = GetString("SI_GREGORIANCALENDARMONTHS_LORENAME", currentMonth)
 
-      local itemLink = self:CanonicalizeItemLink(GetItemRewardItemLink(rewardId, count))
+      local itemLink = CanonicalizeItemLink(GetItemRewardItemLink(rewardId, count))
       local scenario = {
         source = currentESOMonthName,
         action = GetString(SI_DAILY_LOGIN_REWARDS_CLAIM_KEYBIND),

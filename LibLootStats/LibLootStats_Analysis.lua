@@ -38,7 +38,7 @@ function LibLootStats:FindScenarios(...)
 end
 
 function LibLootStats:FindDeconstructionExpectation(itemLink)
-  itemLink = LibLootStats:CanonicalizeItemLink(itemLink)
+  itemLink = LibLootStats.CanonicalizeItemLink(itemLink)
   local samples = 0
   local results = {}
   self:EnumerateScenarios(
