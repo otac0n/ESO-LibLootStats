@@ -37,17 +37,29 @@ function LibLootStats:FindScenarios(...)
   return results
 end
 
+local function SimilarItemLinkPattern(itemLink)
+  local parsed = LibLootStats.ParseItemLink(itemLink)
+  parsed[1] = "%d"
+  parsed[16] = "%d+"
+  parsed[19] = "%d"
+  parsed[20] = "%d"
+  if not GetItemLinkShowItemStyleInTooltip(itemLink) then
+    parsed[17] = "%d+"
+  end
+  parsed[23] = ".*"
+  return "^" .. LibLootStats.MakeItemLink(parsed) .. "$"
+end
+LibLootStats.SimilarItemLinkPattern = SimilarItemLinkPattern
+
 function LibLootStats:FindDeconstructionExpectation(itemLink)
-  itemLink = LibLootStats.CanonicalizeItemLink(itemLink)
+  local pattern = SimilarItemLinkPattern(itemLink)
   local samples = 0
   local results = {}
   self:EnumerateScenarios(
-    Filter.SourceItems(Filter.All(function (item, count) return item == itemLink end)),
+    Filter.SourceItems(Filter.All(function (item, count) return string.match(item, pattern) and true or false end)),
     function (scenario, count)
       for _, pair in ipairs(scenario.sourceItems) do
-        --if pair.item == itemLink then
         samples = samples + (pair.count * count)
-        --end
       end
       for _, pair in ipairs(scenario.outcome) do
         results[pair.item] = (results[pair.item] or 0) + (pair.count * count)
