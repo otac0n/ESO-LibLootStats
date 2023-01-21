@@ -51,26 +51,74 @@ local function SimilarItemLinkPattern(itemLink)
 end
 LibLootStats.SimilarItemLinkPattern = SimilarItemLinkPattern
 
-function LibLootStats:FindDeconstructionExpectation(itemLink)
+--- Welford's Algorithm, weighted
+local function CombineVariance(countA, averageA, M2a, countB, averageB, M2b)
+  local count = countA + countB
+  local delta = averageB - averageA
+  local partA = delta * (countB / count)
+  local M2 = M2a + M2b + delta * countA * partA
+  local average = averageA + partA
+  return count, average, M2
+end
+
+function LibLootStats:FindDeconstructionExpectation(itemLink, getValue)
   local pattern = SimilarItemLinkPattern(itemLink)
   local samples = 0
   local results = {}
   self:EnumerateScenarios(
+    Filter.AnySourceItem(function (item, count) return count > 0 end),
     Filter.SourceItems(Filter.All(function (item, count) return string.match(item, pattern) and true or false end)),
     function (scenario, count)
+      local newSamples = 0
       for _, pair in ipairs(scenario.sourceItems) do
-        samples = samples + (pair.count * count)
+        newSamples = newSamples + pair.count
+      end
+
+      local scenarioSamples = newSamples * count
+      local newTotal = samples + scenarioSamples
+
+      local byItem = {}
+      for item, _ in pairs(results) do
+        byItem[item] = 0
       end
       for _, pair in ipairs(scenario.outcome) do
-        results[pair.item] = (results[pair.item] or 0) + (pair.count * count)
+        byItem[pair.item] = (byItem[pair.item] or 0) + pair.count
       end
+
+      for item, count in pairs(byItem) do
+        local agg = results[item]
+        if not agg then
+          agg = { mean = 0, M2 = 0 }
+          results[item] = agg
+        end
+
+        _, agg.mean, agg.M2 = CombineVariance(samples, agg.mean, agg.M2, scenarioSamples, count / newSamples, 0) -- TODO: Compute M2,b of the byItem aggregate
+      end
+
+      samples = newTotal
     end
   )
   local expectation = {
     samples = samples
   }
-  for item, count in pairs(results) do
-    table.insert(expectation, { item = item, count = count / samples })
+  if samples > 1 then
+    local totalValue = getValue and 0 or nil
+    for item, agg in pairs(results) do
+      local sampleVariance = agg.M2 / (samples - 1)
+      local standardError = (1.96 * sampleVariance) / math.sqrt(samples) -- 95% confidence, Student's T
+      local lower = math.max(0, agg.mean * (1 - standardError))
+      local row = { item = item, expected = lower }
+      if getValue then
+        local value = getValue(item)
+        if value then
+          local expectedValue = value * lower
+          row.value = expectedValue
+          totalValue = totalValue + expectedValue
+        end
+      end
+      table.insert(expectation, row)
+    end
+    expectation.value = totalValue
   end
   return expectation
 end
