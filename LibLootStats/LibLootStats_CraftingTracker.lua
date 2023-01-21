@@ -67,12 +67,12 @@ local extract = {
   cloth = NON_COMBAT_BONUS_CLOTHIER_EXTRACT_LEVEL,
   smith = NON_COMBAT_BONUS_BLACKSMITHING_EXTRACT_LEVEL,
   wood = NON_COMBAT_BONUS_WOODWORKING_EXTRACT_LEVEL,
-  enchant = NON_COMBAT_BONUS_ENCHANTING_DECONSTRUCTION_UPGRADE,
   jewel = NON_COMBAT_BONUS_JEWELRYCRAFTING_EXTRACT_LEVEL,
 }
 function CraftingTracker:GetContext()
   local context = {
     meticulous = LibLootStats.SkillPointLevel(83),
+    enchant = GetNonCombatBonus(NON_COMBAT_BONUS_ENCHANTING_DECONSTRUCTION_UPGRADE),
   }
   for k,v in pairs(extract) do
     local bonus = GetNonCombatBonus(v)
