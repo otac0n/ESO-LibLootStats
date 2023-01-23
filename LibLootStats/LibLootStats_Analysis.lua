@@ -54,6 +54,20 @@ local function SimilarItemLinkPattern(itemLink)
 end
 Analysis.SimilarItemLinkPattern = SimilarItemLinkPattern
 
+local function WilsonScore(positive, samples, z)
+  z = z or 1.96 -- 95% confidence
+  local p = positive / samples
+  local zSq = z * z
+  local partA = 2 * positive + zSq
+  local partB = zSq - 1/samples + 4*positive*(1 - p)
+  local partC = 4 * p - 2
+  local denom = 2 * (samples + zSq)
+  local lower = math.max(0, (partA - (z * math.sqrt(partB + partC) + 1)) / denom)
+  local upper = math.min(1, (partA + (z * math.sqrt(partB - partC) + 1)) / denom)
+  return p, lower, upper
+end
+Analysis.WilsonScore = WilsonScore
+
 --- Welford's Algorithm, weighted
 local function CombineVariance(countA, averageA, M2a, countB, averageB, M2b)
   local count = countA + countB
