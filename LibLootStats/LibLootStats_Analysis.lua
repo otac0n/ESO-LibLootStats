@@ -106,25 +106,60 @@ function LibLootStats:FindDeconstructionExpectation(itemLink, getValue)
     samples = samples,
   }
   if samples > 1 then
-    local totalValue = getValue and 0 or nil
     for item, agg in pairs(results) do
       local sampleVariance = agg.M2 / (samples - 1)
       local standardError = (1.96 * sampleVariance) / math.sqrt(samples) -- 95% confidence, Student's T
       local lower = math.max(0, agg.mean * (1 - standardError))
-      local row = { item = item, expected = lower }
-      if getValue then
-        local value = getValue(item)
-        if value then
-          local expectedValue = value * lower
-          row.value = expectedValue
-          totalValue = totalValue + expectedValue
-        end
+      table.insert(expectation, { item = item, expected = lower })
+    end
+  else
+    local upside = self.ItemDeconstructionUpside(itemLink)
+    for _, pair in ipairs(upside) do
+      table.insert(expectation, { item = pair.item, expected = pair.max })
+    end
+  end
+  if getValue then
+    local totalValue = 0
+    for _, row in ipairs(expectation) do
+      local value = getValue(row.item)
+      if value then
+        local expectedValue = value * row.expected
+        row.value = expectedValue
+        totalValue = totalValue + expectedValue
       end
-      table.insert(expectation, row)
     end
     expectation.value = totalValue
   end
   return expectation
+end
+
+function LibLootStats.ItemDeconstructionUpside(itemLink)
+  local outcome = {}
+
+  local tradeskillType = GetItemLinkCraftingSkillType(itemLink)
+  if tradeskillType ~= CRAFTING_TYPE_INVALID and tradeskillType ~= CRAFTING_TYPE_ALCHEMY and tradeskillType ~= CRAFTING_TYPE_PROVISIONING then
+    local max = 1
+
+    if not DoesSmithingTypeIgnoreStyleItems(tradeskillType) then
+      table.insert(outcome, { item = GetItemStyleMaterialLink(GetItemLinkItemStyle(itemLink), LINK_STYLE_DEFAULT), max = max })
+    end
+
+    if tradeskillType == CRAFTING_TYPE_JEWELRYCRAFTING then
+      max = 0.1
+    end
+
+    local functionalQuality = GetItemLinkFunctionalQuality(itemLink)
+    if functionalQuality >= ITEM_FUNCTIONAL_QUALITY_NORMAL then
+      table.insert(outcome, { item = GetSmithingImprovementItemLink(tradeskillType, functionalQuality - 1, LINK_STYLE_DEFAULT), max = max })
+    end
+
+    local traitType = GetItemLinkTraitType(itemLink)
+    if traitType ~= ITEM_TRAIT_TYPE_NONE then
+      table.insert(outcome, { item = GetSmithingTraitItemLink(traitType + 1, LINK_STYLE_DEFAULT), max = max })
+    end
+  end
+
+  return outcome
 end
 
 local function GetOutcomeId(outcomeLink)
