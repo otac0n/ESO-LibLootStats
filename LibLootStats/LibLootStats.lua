@@ -8,7 +8,7 @@ local logger
 function LibLootStats:Initialize()
   logger = LibDebugLogger(LibLootStats.ADDON_NAME)
   LibLootStats.logger = logger
-  logger:SetMinLevelOverride(LibDebugLogger.LOG_LEVEL_DEBUG)
+  --logger:SetMinLevelOverride(LibDebugLogger.LOG_LEVEL_DEBUG)
   LibLootStats:InitializeSettings()
   LibLootStats:InitializeHooks()
   LibLootStats.settingsMenu = LibLootStatsSettingsMenu:New()
@@ -172,7 +172,7 @@ local function CanonicalizeItemLink(itemLink)
   local parsed
   if not string.match(itemLink, "^|H0:.*|h|h$") then
     parsed = parsed or ParseItemLink(itemLink)
-    parsed[1] = "0"
+    parsed[1] = tostring(LINK_STYLE_DEFAULT)
     parsed[23] = ""
   end
 

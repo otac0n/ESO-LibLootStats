@@ -9,6 +9,9 @@ LibLootStats.Caches = Caches
 local Filter = {}
 LibLootStats.Filter = Filter
 
+local Analysis = {}
+LibLootStats.Analysis = Analysis
+
 --- Enumerate all outcomes according to the specified filter functions.
 -- @param ... Any number of filter functions.
 function LibLootStats:EnumerateScenarios(...)
@@ -49,7 +52,7 @@ local function SimilarItemLinkPattern(itemLink)
   parsed[23] = ".*"
   return "^" .. LibLootStats.MakeItemLink(parsed) .. "$"
 end
-LibLootStats.SimilarItemLinkPattern = SimilarItemLinkPattern
+Analysis.SimilarItemLinkPattern = SimilarItemLinkPattern
 
 --- Welford's Algorithm, weighted
 local function CombineVariance(countA, averageA, M2a, countB, averageB, M2b)
@@ -60,6 +63,7 @@ local function CombineVariance(countA, averageA, M2a, countB, averageB, M2b)
   local average = averageA + partA
   return count, average, M2
 end
+Analysis.CombineVariance = CombineVariance
 
 function LibLootStats:FindDeconstructionExpectation(itemLink, getValue)
   local pattern = SimilarItemLinkPattern(itemLink)
@@ -99,7 +103,7 @@ function LibLootStats:FindDeconstructionExpectation(itemLink, getValue)
     end
   )
   local expectation = {
-    samples = samples
+    samples = samples,
   }
   if samples > 1 then
     local totalValue = getValue and 0 or nil
@@ -131,6 +135,7 @@ local function GetOutcomeId(outcomeLink)
     end
   end
 end
+Analysis.GetOutcomeId = GetOutcomeId
 
 function Caches.LookupOutcome(id)
   local outcome = outcomes[id]
