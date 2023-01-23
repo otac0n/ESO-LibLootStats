@@ -16,7 +16,7 @@ LibLootStats.Analysis = Analysis
 -- @param ... Any number of filter functions.
 function LibLootStats:EnumerateScenarios(...)
   local filter = LibLootStats.Filter.And(...)
-  for key, count in pairs(LibLootStats.data.scenarios) do
+  for key, count in pairs(LibLootStats.data.scenarios.keyToCount) do
     local scenario = Caches.LookupScenario(key)
     filter(scenario, count)
   end

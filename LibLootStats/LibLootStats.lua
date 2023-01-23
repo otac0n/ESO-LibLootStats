@@ -601,12 +601,10 @@ function LibLootStats:SaveOutcomeGroup(outcomeGroup)
 
   local outcome = self:GetOutcomeId(outcomeGroup, outcomeGroup.maintainOrder)
 
-  local scenario = ScenarioToKey({
+  self.data.scenarios:IncrementScenario({
     source = source,
     action = action,
     context = context,
     outcome = outcome,
   })
-  local saved = self.data.scenarios[scenario]
-  self.data.scenarios[scenario] = saved and (saved + 1) or 1
 end

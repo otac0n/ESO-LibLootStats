@@ -73,6 +73,26 @@ local function MakeLookup(source, toKey, fromKey)
   return lookup
 end
 
+function MakeQuantityStore(source, toKey, fromKey)
+  local store = {
+    keyToCount = source,
+  }
+
+  function store:Count(scenario)
+    local key = toKey(scenario)
+    local saved = self.keyToCount[key]
+    return saved or 0
+  end
+
+  function store:IncrementScenario(scenario, count)
+    local key = toKey(scenario)
+    local saved = self.keyToCount[key]
+    self.keyToCount[key] = (saved or 0) + (count or 1)
+  end
+
+  return store
+end
+
 local ui
 function LibLootStats:InitializeSettings()
   LibLootStats.collectionVars = LibSavedVars
@@ -88,7 +108,7 @@ function LibLootStats:InitializeSettings()
     strings = MakeLookup(strings.lookup),
     contexts = MakeLookup(contexts.lookup, self.ContextToKey, self.ParseContextKey),
     outcomes = MakeLookup(outcomes.lookup, self.OutcomeToKey, self.ParseOutcomeKey),
-    scenarios = scenarios.data
+    scenarios = MakeQuantityStore(scenarios.data, self.ScenarioToKey, self.ParseScenarioKey),
   }
   LibLootStats:ApplyUISettings()
 end
