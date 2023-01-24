@@ -79,54 +79,103 @@ local function CombineVariance(countA, averageA, M2a, countB, averageB, M2b)
 end
 Analysis.CombineVariance = CombineVariance
 
-function LibLootStats:FindDeconstructionExpectation(itemLink, getValue)
-  local pattern = SimilarItemLinkPattern(itemLink)
-  local samples = 0
-  local results = {}
-  self:EnumerateScenarios(
-    Filter.AnySourceItem(function (item, count) return count > 0 end),
-    Filter.SourceItems(Filter.All(function (item, count) return string.match(item, pattern) and true or false end)),
-    function (scenario, count)
-      local newSamples = 0
+local function MakeDeconstructionStatistic(sourceItemKey, outcomeItemKey)
+  outcomeItemKey = outcomeItemKey or function (key) return key end
+
+  local function groupKey(scenarioKey)
+    local scenario = Caches.LookupScenario(scenarioKey)
+    if scenario.sourceItems and scenario.action == GetString(SI_INTERACT_OPTION_UNIVERSAL_DECONSTRUCTION) then
+      local anyHasCount, pattern = false, nil
       for _, pair in ipairs(scenario.sourceItems) do
-        newSamples = newSamples + pair.count
+        local newPattern = sourceItemKey(pair.item)
+        if not newPattern then
+          return nil
+        end
+        anyHasCount = anyHasCount or pair.count > 0
+        if pattern == nil then
+          pattern = newPattern
+        elseif pattern ~= newPattern then
+          return nil
+        end
       end
+      return (anyHasCount and pattern) or nil
+    end
+  end
 
-      local scenarioSamples = newSamples * count
-      local newTotal = samples + scenarioSamples
-
-      local byItem = {}
-      for item, _ in pairs(results) do
-        byItem[item] = 0
-      end
-      for _, pair in ipairs(scenario.outcome) do
-        byItem[pair.item] = (byItem[pair.item] or 0) + pair.count
-      end
-
-      for item, count in pairs(byItem) do
-        local agg = results[item]
+  local function makeValue(scenarioKey, count)
+    scenario = Caches.LookupScenario(scenarioKey)
+    local samples = 0
+    for _, pair in ipairs(scenario.sourceItems) do
+      samples = samples + pair.count
+    end
+    -- TODO: Compute M2,b of the byItem aggregate
+    local byItem = {}
+    for _, pair in ipairs(scenario.outcome) do
+      local itemKey = outcomeItemKey(pair.item)
+      if itemKey then
+        local agg = byItem[itemKey]
         if not agg then
           agg = { mean = 0, M2 = 0 }
-          results[item] = agg
+          byItem[itemKey] = agg
         end
-
-        _, agg.mean, agg.M2 = CombineVariance(samples, agg.mean, agg.M2, scenarioSamples, count / newSamples, 0) -- TODO: Compute M2,b of the byItem aggregate
+        agg.mean = agg.mean + pair.count
       end
+    end
+    for _, agg in pairs(byItem) do
+      agg.mean = agg.mean / samples
+    end
+    return {
+      byItem = byItem,
+      samples = samples * count,
+    }
+  end
 
-      samples = newTotal
+  local function accumulate(a, b)
+    local byItem = {}
+    for item, aggA in pairs(a.byItem) do
+      byItem[item] = { mean = aggA.mean, M2 = aggA.M2 }
     end
-  )
-  local expectation = {
-    samples = samples,
-  }
-  if samples > 1 then
-    for item, agg in pairs(results) do
-      local sampleVariance = agg.M2 / (samples - 1)
-      local standardError = (1.96 * sampleVariance) / math.sqrt(samples) -- 95% confidence, Student's T
-      local lower = math.max(0, agg.mean * (1 - standardError))
-      table.insert(expectation, { item = item, expected = lower })
+    for item, aggB in pairs(b.byItem) do
+      local aggA = byItem[item]
+      if not aggA then
+        aggA = { mean = 0, M2 = 0 }
+        byItem[item] = aggA
+      end
+      _, aggA.mean, aggA.M2 = CombineVariance(a.samples, aggA.mean, aggA.M2, b.samples, aggB.mean, aggB.M2)
     end
-  else
+    return {
+      byItem = byItem,
+      samples = a.samples + b.samples,
+    }
+  end
+
+  local function makeResult(a)
+    local expectation = {
+      samples = a.samples,
+    }
+    if a.samples > 1 then
+      for item, agg in pairs(a.byItem) do
+        local sampleVariance = agg.M2 / (a.samples - 1)
+        local standardError = (1.96 * sampleVariance) / math.sqrt(a.samples) -- 95% confidence, Student's T
+        local lower = math.max(0, agg.mean * (1 - standardError))
+        table.insert(expectation, { item = item, expected = lower })
+      end
+    end
+    return expectation
+  end
+
+  return LibLootStats.data.scenarios:AddStatistic(groupKey, makeValue, accumulate, makeResult)
+end
+Analysis.MakeDeconstructionStatistic = MakeDeconstructionStatistic
+
+local similarItemOutcome
+function LibLootStats:FindDeconstructionExpectation(itemLink, getValue)
+  if not similarItemOutcome then
+    similarItemOutcome = MakeDeconstructionStatistic(SimilarItemLinkPattern)
+  end
+
+  local expectation = similarItemOutcome:GetValueByKey(SimilarItemLinkPattern(itemLink)) or { samples = 0 }
+  if expectation.samples <= 1 then
     local upside = self.ItemDeconstructionUpside(itemLink)
     for _, pair in ipairs(upside) do
       table.insert(expectation, { item = pair.item, expected = pair.max })

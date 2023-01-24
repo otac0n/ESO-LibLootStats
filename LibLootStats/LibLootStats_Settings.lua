@@ -76,7 +76,43 @@ end
 function MakeQuantityStore(source, toKey, fromKey)
   local store = {
     keyToCount = source,
+    statistics = {},
   }
+
+  function store:AddStatistic(groupKey, makeValue, accumulate, makeResult)
+    local statistic = {
+      cache = {},
+      GroupKey = groupKey,
+    }
+
+    function statistic:Increment(scenarioKey, count)
+      local groupKey = groupKey(scenarioKey)
+      if groupKey ~= nil then
+        local current = self.cache[groupKey]
+        if current then
+          current = accumulate(current, makeValue(scenarioKey, count))
+        else
+          current = makeValue(scenarioKey, count)
+        end
+        self.cache[groupKey] = current
+      end
+    end
+
+    function statistic:GetValueByKey(groupKey)
+      local current = self.cache[groupKey]
+      if current then
+        return makeResult(current)
+      end
+    end
+
+    table.insert(self.statistics, statistic)
+
+    for scenarioKey, count in pairs(self.keyToCount) do
+      statistic:Increment(scenarioKey, count)
+    end
+
+    return statistic
+  end
 
   function store:Count(scenario)
     local key = toKey(scenario)
@@ -85,9 +121,13 @@ function MakeQuantityStore(source, toKey, fromKey)
   end
 
   function store:IncrementScenario(scenario, count)
+    count = count or 1
     local key = toKey(scenario)
     local saved = self.keyToCount[key]
-    self.keyToCount[key] = (saved or 0) + (count or 1)
+    self.keyToCount[key] = (saved or 0) + count
+    for _, statistic in ipairs(self.statistics) do
+      statistic:Increment(key, count)
+    end
   end
 
   return store
@@ -108,8 +148,8 @@ function LibLootStats:InitializeSettings()
     strings = MakeLookup(strings.lookup),
     contexts = MakeLookup(contexts.lookup, self.ContextToKey, self.ParseContextKey),
     outcomes = MakeLookup(outcomes.lookup, self.OutcomeToKey, self.ParseOutcomeKey),
-    scenarios = MakeQuantityStore(scenarios.data, self.ScenarioToKey, self.ParseScenarioKey),
   }
+  self.data.scenarios = MakeQuantityStore(scenarios.data, self.ScenarioToKey, self.ParseScenarioKey)
   LibLootStats:ApplyUISettings()
 end
 
