@@ -21,6 +21,7 @@ LibLootStats_SettingsMenu.lua
 LibLootStats_ReticleTracker.lua
 LibLootStats_CraftingTracker.lua
 LibLootStats_ActiveSources.lua
+LibLootStats_Filter.lua
 LibLootStats_Analysis.lua
 LibLootStats.lua
 LootStatsWindow.xml
