@@ -9,6 +9,35 @@ local Analysis = {
 }
 LibLootStats.Analysis = Analysis
 
+local itemTypeVector = {
+  [ITEMTYPE_ARMOR_BOOSTER] = 'improvement',
+  [ITEMTYPE_ARMOR_TRAIT] = 'trait',
+  [ITEMTYPE_BLACKSMITHING_BOOSTER] = 'improvement',
+  [ITEMTYPE_BLACKSMITHING_MATERIAL] = 'material',
+  [ITEMTYPE_BLACKSMITHING_RAW_MATERIAL] = 'raw',
+  [ITEMTYPE_CLOTHIER_BOOSTER] = 'improvement',
+  [ITEMTYPE_CLOTHIER_MATERIAL] = 'material',
+  [ITEMTYPE_CLOTHIER_RAW_MATERIAL] = 'raw',
+  [ITEMTYPE_ENCHANTING_RUNE_ASPECT] = 'aspect',
+  [ITEMTYPE_ENCHANTING_RUNE_ESSENCE] = 'essence',
+  [ITEMTYPE_ENCHANTING_RUNE_POTENCY] = 'potency',
+  [ITEMTYPE_FURNISHING_MATERIAL] = 'material',
+  [ITEMTYPE_JEWELRYCRAFTING_BOOSTER] = 'improvement',
+  [ITEMTYPE_JEWELRYCRAFTING_RAW_BOOSTER] = 'raw_improvement',
+  [ITEMTYPE_JEWELRYCRAFTING_MATERIAL] = 'material',
+  [ITEMTYPE_JEWELRYCRAFTING_RAW_MATERIAL] = 'raw',
+  [ITEMTYPE_JEWELRY_RAW_TRAIT] = 'raw_trait',
+  [ITEMTYPE_JEWELRY_TRAIT] = 'trait',
+  [ITEMTYPE_RAW_MATERIAL] = 'raw_style',
+  [ITEMTYPE_STYLE_MATERIAL] = 'style',
+  [ITEMTYPE_WEAPON_BOOSTER] = 'improvement',
+  [ITEMTYPE_WEAPON_TRAIT] = 'trait',
+  [ITEMTYPE_WOODWORKING_BOOSTER] = 'improvement',
+  [ITEMTYPE_WOODWORKING_MATERIAL] = 'material',
+  [ITEMTYPE_WOODWORKING_RAW_MATERIAL] = 'raw',
+}
+Analysis.itemTypeVector = itemTypeVector
+
 --- Enumerate all outcomes according to the specified filter functions.
 -- @param ... Any number of filter functions.
 function LibLootStats:EnumerateScenarios(...)
@@ -50,6 +79,22 @@ local function SimilarItemLinkPattern(itemLink)
   return "^" .. LibLootStats.MakeItemLink(parsed) .. "$"
 end
 Analysis.SimilarItemLinkPattern = SimilarItemLinkPattern
+
+local function IsItemLinkDeconstructable(itemLink)
+  local itemType = itemTypeVector[GetItemLinkItemType(itemLink)]
+  if itemType then
+    return string.match(itemType, "^raw")
+  end
+
+  local craftingType = GetItemLinkCraftingSkillType(itemLink)
+  if craftingType ~= CRAFTING_TYPE_INVALID and craftingType ~= CRAFTING_TYPE_ALCHEMY and craftingType ~= CRAFTING_TYPE_PROVISIONING then
+    if not ZO_ItemFilterUtils.IsFilterDataInItemTypeDisplayCategory({GetItemLinkFilterTypeInfo(itemLink)}, ITEMFILTERTYPE_COMPANION) then
+      return true
+    end
+  end
+  return false
+end
+Analysis.IsItemLinkDeconstructable = IsItemLinkDeconstructable
 
 local function WilsonScore(positive, samples, z)
   z = z or 1.96 -- 95% confidence
@@ -128,16 +173,18 @@ local function MakeDeconstructionStatistic(sourceItemKey, outcomeItemKey)
   end
 
   local function accumulate(a, b)
-    local byItem = {}
     for item, aggA in pairs(a.byItem) do
-      byItem[item] = { mean = aggA.mean, M2 = aggA.M2 }
+      if not b.byItem[item] then
+        b.byItem[item] = { mean = 0, M2 = 0 }
+      end
     end
+    local byItem = {}
     for item, aggB in pairs(b.byItem) do
-      local aggA = byItem[item]
+      local aggA = a.byItem[item]
       if not aggA then
         aggA = { mean = 0, M2 = 0 }
-        byItem[item] = aggA
       end
+      byItem[item] = aggA
       _, aggA.mean, aggA.M2 = CombineVariance(a.samples, aggA.mean, aggA.M2, b.samples, aggB.mean, aggB.M2)
     end
     return {
@@ -154,8 +201,10 @@ local function MakeDeconstructionStatistic(sourceItemKey, outcomeItemKey)
       for item, agg in pairs(a.byItem) do
         local sampleVariance = agg.M2 / (a.samples - 1)
         local standardError = (1.96 * sampleVariance) / math.sqrt(a.samples) -- 95% confidence, Student's T
-        local lower = math.max(0, agg.mean * (1 - standardError))
-        table.insert(expectation, { item = item, expected = lower })
+        local expected = math.max(0, agg.mean * (1 - standardError))
+        local lower = agg.mean - sampleVariance
+        local upper = agg.mean + sampleVariance
+        table.insert(expectation, { item = item, expected = expected, lower = lower, upper = upper })
       end
     end
     return expectation
@@ -180,127 +229,147 @@ function Analysis.ItemSaleValue(item)
   return value
 end
 
-local similarItemOutcome
+local function AttachExpectationValues(expectation, getValue)
+  local totalValue = 0
+  for _, row in ipairs(expectation) do
+    local value = getValue(row.item)
+    if value then
+      local expectedValue = value * row.expected
+      row.value = expectedValue
+      totalValue = totalValue + expectedValue
+    end
+  end
+  expectation.value = totalValue
+end
+Analysis.AttachExpectationValues = AttachExpectationValues
+
 function LibLootStats:FindDeconstructionExpectation(itemLink, getValue)
-  if not similarItemOutcome then
-    similarItemOutcome = MakeDeconstructionStatistic(SimilarItemLinkPattern)
+  if not IsItemLinkDeconstructable(itemLink) then
+    return
   end
 
-  local expectation = similarItemOutcome:GetValueByKey(SimilarItemLinkPattern(itemLink)) or { samples = 0 }
-  if expectation.samples <= 1 then
-    local upside = self.ItemDeconstructionUpside(itemLink)
-    for _, pair in ipairs(upside) do
-      table.insert(expectation, { item = pair.item, expected = pair.expected })
-    end
+  if not Caches.similarItemOutcome then
+    Caches.similarItemOutcome = MakeDeconstructionStatistic(SimilarItemLinkPattern)
+  end
+
+  local expectation = Caches.similarItemOutcome:GetValueByKey(SimilarItemLinkPattern(itemLink)) or { samples = 0 }
+  if expectation.samples <= 6 and GetItemLinkCraftingSkillType(itemLink) ~= CRAFTING_TYPE_ENCHANTING then
+    local upside = self.ItemDeconstructionUpside(itemLink) or {}
+    upside.samples = expectation.samples
+    expectation = upside
   end
 
   if getValue then
-    local totalValue = 0
-    for _, row in ipairs(expectation) do
-      local value = getValue(row.item)
-      if value then
-        local expectedValue = value * row.expected
-        row.value = expectedValue
-        totalValue = totalValue + expectedValue
-      end
-    end
-    expectation.value = totalValue
+    AttachExpectationValues(expectation, getValue)
   end
   return expectation
 end
 
-local baseProbabilityStats
 local function UpsideKey(itemLink)
   local craftingType = GetItemLinkCraftingSkillType(itemLink)
-  if craftingType ~= CRAFTING_TYPE_INVALID and craftingType ~= CRAFTING_TYPE_ALCHEMY and craftingType ~= CRAFTING_TYPE_PROVISIONING then
-    local equipType = GetItemLinkEquipType(itemLink)
+  local equipType = GetItemLinkEquipType(itemLink)
+  local functionalQuality = GetItemLinkFunctionalQuality(itemLink)
+  local hasSet = GetItemLinkSetInfo(itemLink)
+  local isCrafted = IsItemLinkCrafted(itemLink)
+  return tostring(craftingType) .. ':' .. tostring(equipType) .. ':' .. tostring(functionalQuality) .. ':' .. tostring(hasSet) .. ':' .. tostring(isCrafted)
+end
+
+local function StyleKey(itemLink)
+  local craftingType = GetItemLinkCraftingSkillType(itemLink)
+  if not DoesSmithingTypeIgnoreStyleItems(craftingType) then
     local functionalQuality = GetItemLinkFunctionalQuality(itemLink)
-    local hasSet = GetItemLinkSetInfo(itemLink)
     local isCrafted = IsItemLinkCrafted(itemLink)
-    return tostring(craftingType) .. ':' .. tostring(equipType) .. ':' .. tostring(functionalQuality) .. ':' .. tostring(hasSet) .. ':' .. tostring(isCrafted)
+    local itemStyle = GetItemLinkItemStyle(itemLink)
+    return tostring(functionalQuality) .. ':' .. tostring(isCrafted) .. ':' .. tostring(itemStyle)
   end
 end
 
-local itemTypeVector = {
-  [ITEMTYPE_ARMOR_BOOSTER] = 'improvement',
-  [ITEMTYPE_ARMOR_TRAIT] = 'trait',
-  [ITEMTYPE_BLACKSMITHING_BOOSTER] = 'improvement',
-  [ITEMTYPE_BLACKSMITHING_MATERIAL] = 'material',
-  [ITEMTYPE_BLACKSMITHING_RAW_MATERIAL] = 'raw',
-  [ITEMTYPE_CLOTHIER_BOOSTER] = 'improvement',
-  [ITEMTYPE_CLOTHIER_MATERIAL] = 'material',
-  [ITEMTYPE_CLOTHIER_RAW_MATERIAL] = 'raw',
-  [ITEMTYPE_ENCHANTING_RUNE_ASPECT] = 'aspect',
-  [ITEMTYPE_ENCHANTING_RUNE_ESSENCE] = 'essence',
-  [ITEMTYPE_ENCHANTING_RUNE_POTENCY] = 'potency',
-  [ITEMTYPE_FURNISHING_MATERIAL] = 'material',
-  [ITEMTYPE_JEWELRYCRAFTING_BOOSTER] = 'improvement',
-  [ITEMTYPE_JEWELRYCRAFTING_RAW_BOOSTER] = 'raw_improvement',
-  [ITEMTYPE_JEWELRYCRAFTING_MATERIAL] = 'material',
-  [ITEMTYPE_JEWELRYCRAFTING_RAW_MATERIAL] = 'raw',
-  [ITEMTYPE_JEWELRY_RAW_TRAIT] = 'raw_trait',
-  [ITEMTYPE_JEWELRY_TRAIT] = 'trait',
-  [ITEMTYPE_RAW_MATERIAL] = 'raw',
-  [ITEMTYPE_STYLE_MATERIAL] = 'style',
-  [ITEMTYPE_WEAPON_BOOSTER] = 'improvement',
-  [ITEMTYPE_WEAPON_TRAIT] = 'trait',
-  [ITEMTYPE_WOODWORKING_BOOSTER] = 'improvement',
-  [ITEMTYPE_WOODWORKING_MATERIAL] = 'material',
-  [ITEMTYPE_WOODWORKING_RAW_MATERIAL] = 'raw',
-}
-
 local function UpsideOutcomeKey(itemLink)
-  return itemTypeVector[GetItemLinkItemType(itemLink)]
+  local itemType = itemTypeVector[GetItemLinkItemType(itemLink)]
+  if itemType ~= 'style' then
+    return itemType
+  end
 end
 
-function LibLootStats.ItemDeconstructionUpside(itemLink)
-  if not baseProbabilityStats then
-    baseProbabilityStats = MakeDeconstructionStatistic(UpsideKey, UpsideOutcomeKey)
+local function StyleOutcomeKey(itemLink)
+  local itemType = itemTypeVector[GetItemLinkItemType(itemLink)]
+  if itemType == 'style' then
+    return itemType
+  end
+end
+
+function LibLootStats.ItemDeconstructionUpside(itemLink, getValue)
+  if not IsItemLinkDeconstructable(itemLink) or itemTypeVector[GetItemLinkItemType(itemLink)] then
+    return
+  end
+
+  if not Caches.baseProbabilityStats then
+    Caches.baseProbabilityStats = MakeDeconstructionStatistic(UpsideKey, UpsideOutcomeKey)
+  end
+  if not Caches.styleProbabilityStats then
+    Caches.styleProbabilityStats = MakeDeconstructionStatistic(StyleKey, StyleOutcomeKey)
   end
 
   local outcome = {}
 
-  local expectations = baseProbabilityStats:GetValueByKey(UpsideKey(itemLink))
+  local expectations = Caches.baseProbabilityStats:GetValueByKey(UpsideKey(itemLink))
+  local expectedTypes = {}
   if expectations then
-    local expectedTypes = {}
+    outcome.baseSamples = expectations.samples
     for _, row in ipairs(expectations) do
       expectedTypes[row.item] = row.expected
     end
+  end
 
-    local byStyle = expectedTypes['style']
-    if byStyle then
-      table.insert(outcome, { item = GetItemStyleMaterialLink(GetItemLinkItemStyle(itemLink), LINK_STYLE_DEFAULT), expected = byStyle })
-    end
-
-    local craftingType = GetItemLinkCraftingSkillType(itemLink)
-    local functionalQuality = GetItemLinkFunctionalQuality(itemLink)
-
-    if functionalQuality >= ITEM_FUNCTIONAL_QUALITY_NORMAL then
-      local itemType, scale = 'improvement', 1
-      if craftingType == CRAFTING_TYPE_JEWELRYCRAFTING then
-        itemType, scale = 'raw_improvement', 0.1
+  local craftingType = GetItemLinkCraftingSkillType(itemLink)
+  if not DoesSmithingTypeIgnoreStyleItems(craftingType) then
+    local item = GetItemStyleMaterialLink(GetItemLinkItemStyle(itemLink), LINK_STYLE_DEFAULT)
+    if item ~= "" then
+      local byStyle
+      local styleExpectations = Caches.styleProbabilityStats:GetValueByKey(StyleKey(itemLink))
+      if styleExpectations and styleExpectations[1] then
+        outcome.styleSamples = styleExpectations.samples
+        byStyle = styleExpectations[1].expected
       end
 
-      local byImprovement = expectedTypes[itemType]
-      if byImprovement then
-        table.insert(outcome, { item = GetSmithingImprovementItemLink(craftingType, functionalQuality - 1, LINK_STYLE_DEFAULT), expected = byImprovement * scale })
-      end
-    end
-
-    local traitType = GetItemLinkTraitType(itemLink)
-    if traitType ~= ITEM_TRAIT_TYPE_NONE then
-      local itemType, scale = 'trait', 1
-      if craftingType == CRAFTING_TYPE_JEWELRYCRAFTING then
-        itemType, scale = 'raw_trait', 0.1
-      end
-
-      local byTrait = expectedTypes[itemType]
-      if byTrait then
-        table.insert(outcome, { item = GetSmithingTraitItemLink(traitType + 1, LINK_STYLE_DEFAULT), expected = byTrait * scale })
-      end
+      byStyle = byStyle or 0.25
+      table.insert(outcome, { item = item, expected = byStyle })
     end
   end
 
+  local functionalQuality = GetItemLinkFunctionalQuality(itemLink)
+
+  if functionalQuality > ITEM_FUNCTIONAL_QUALITY_NORMAL then
+    local itemType, scale = 'improvement', 1
+    if craftingType == CRAFTING_TYPE_JEWELRYCRAFTING then
+      itemType, scale = 'raw_improvement', 0.1
+    end
+
+    local byImprovement = expectedTypes[itemType] or 0.9
+    table.insert(outcome, { item = GetSmithingImprovementItemLink(craftingType, functionalQuality - 1, LINK_STYLE_DEFAULT), expected = byImprovement * scale })
+  end
+
+  local traitType = GetItemLinkTraitType(itemLink)
+  if traitType ~= ITEM_TRAIT_TYPE_NONE and
+    traitType ~= ITEM_TRAIT_TYPE_ARMOR_INTRICATE and
+    traitType ~= ITEM_TRAIT_TYPE_JEWELRY_INTRICATE and
+    traitType ~= ITEM_TRAIT_TYPE_WEAPON_INTRICATE  and
+    traitType ~= ITEM_TRAIT_TYPE_ARMOR_ORNATE and
+    traitType ~= ITEM_TRAIT_TYPE_JEWELRY_ORNATE and
+    traitType ~= ITEM_TRAIT_TYPE_WEAPON_ORNATE then
+
+    local itemType, scale = 'trait', 1
+    if craftingType == CRAFTING_TYPE_JEWELRYCRAFTING then
+      itemType, scale = 'raw_trait', 0.1
+    end
+
+    local byTrait = expectedTypes[itemType] or 0.9
+    table.insert(outcome, { item = GetSmithingTraitItemLink(traitType + 1, LINK_STYLE_DEFAULT), expected = byTrait * scale })
+  end
+
+  if getValue then
+    AttachExpectationValues(outcome, getValue)
+  end
   return outcome
 end
 
