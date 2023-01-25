@@ -165,6 +165,21 @@ local function MakeDeconstructionStatistic(sourceItemKey, outcomeItemKey)
 end
 Analysis.MakeDeconstructionStatistic = MakeDeconstructionStatistic
 
+function Analysis.ItemSaleValue(item)
+  local value, laundry = GetItemLinkValue(item), 0
+  if IsItemLinkStolen(item) then
+    laundry = value
+    value = value * 1.1
+  end
+  local price = LibPrice and LibPrice.ItemLinkToBidAskSpread and LibPrice.ItemLinkToBidAskSpread(item).gold
+  if price then
+    if price.sale and price.sale.count > 60 then return math.max(value, price.sale.value * 0.8 - laundry) end
+    if price.bid and price.bid.value > value then return math.max(value, price.bid.value * 0.8 - laundry) end
+    if price.sale then return math.max(value, price.sale.value * 0.6 - laundry) end
+  end
+  return value
+end
+
 local similarItemOutcome
 function LibLootStats:FindDeconstructionExpectation(itemLink, getValue)
   if not similarItemOutcome then
