@@ -269,14 +269,7 @@ function Analysis.ItemSaleValue(item)
     local price = LibPrice and LibPrice.ItemLinkToBidAskSpread and LibPrice.ItemLinkToBidAskSpread(item).gold
     if price then
       local bid = price.bid and (price.bid.value * 0.8 - laundry)
-      local sale
-      if price.sale then
-        if price.sale.count >= 12 then
-          sale = price.sale.value * 0.8 - laundry
-        else
-          sale = price.sale.value * 0.6 - laundry
-        end
-      end
+      local sale = price.sale and (price.sale.value * 0.8 - laundry)
       return math.max(value, bid or 0, sale or 0)
     end
   end
