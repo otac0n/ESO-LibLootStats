@@ -220,11 +220,20 @@ function Analysis.ItemSaleValue(item)
     laundry = value
     value = value * 1.1
   end
-  local price = LibPrice and LibPrice.ItemLinkToBidAskSpread and LibPrice.ItemLinkToBidAskSpread(item).gold
-  if price then
-    if price.sale and price.sale.count > 60 then return math.max(value, price.sale.value * 0.8 - laundry) end
-    if price.bid and price.bid.value > value then return math.max(value, price.bid.value * 0.8 - laundry) end
-    if price.sale then return math.max(value, price.sale.value * 0.6 - laundry) end
+  if not IsItemLinkBound(item) then
+    local price = LibPrice and LibPrice.ItemLinkToBidAskSpread and LibPrice.ItemLinkToBidAskSpread(item).gold
+    if price then
+      local bid = price.bid and (price.bid.value * 0.8 - laundry)
+      local sale
+      if price.sale then
+        if price.sale.count >= 12 then
+          sale = price.sale.value * 0.8 - laundry
+        else
+          sale = price.sale.value * 0.6 - laundry
+        end
+      end
+      return math.max(value, bid or 0, sale or 0)
+    end
   end
   return value
 end
