@@ -306,12 +306,49 @@ function LibLootStats:FindDeconstructionExpectation(itemLink, getValue)
 end
 
 local function UpsideKey(itemLink)
-  local craftingType = GetItemLinkCraftingSkillType(itemLink)
-  local equipType = GetItemLinkEquipType(itemLink)
+  local armorType = GetItemLinkArmorType(itemLink)
+  local weaponOrEquipType
+  if armorType == ARMORTYPE_NONE then
+    weaponOrEquipType = GetItemLinkWeaponType(itemLink)
+    if weaponOrEquipType == WEAPONTYPE_RUNE then
+      return
+    end
+  else
+    weaponOrEquipType = GetItemLinkEquipType(itemLink)
+  end
+
   local functionalQuality = GetItemLinkFunctionalQuality(itemLink)
   local hasSet = GetItemLinkSetInfo(itemLink)
   local isCrafted = IsItemLinkCrafted(itemLink)
-  return tostring(craftingType) .. ':' .. tostring(equipType) .. ':' .. tostring(functionalQuality) .. ':' .. tostring(hasSet) .. ':' .. tostring(isCrafted)
+  return tostring(armorType)
+    .. ':' .. tostring(weaponOrEquipType)
+    .. ':' .. tostring(functionalQuality)
+    .. ':' .. tostring(hasSet)
+    .. ':' .. tostring(isCrafted)
+end
+
+local function MaterialKey(itemLink)
+  local armorType = GetItemLinkArmorType(itemLink)
+  local weaponOrEquipType
+  if armorType == ARMORTYPE_NONE then
+    weaponOrEquipType = GetItemLinkWeaponType(itemLink)
+    if weaponOrEquipType == WEAPONTYPE_RUNE then
+      return
+    end
+  else
+    weaponOrEquipType = GetItemLinkEquipType(itemLink)
+  end
+
+  local functionalQuality = GetItemLinkFunctionalQuality(itemLink)
+  local level = GetItemLinkRequiredLevel(itemLink)
+  local cpLevel = GetItemLinkRequiredChampionPoints(itemLink)
+  local isCrafted = IsItemLinkCrafted(itemLink)
+  return tostring(armorType)
+    .. ':' .. tostring(weaponOrEquipType)
+    .. ':' .. tostring(level)
+    .. ':' .. tostring(cpLevel)
+    .. ':' .. tostring(functionalQuality)
+    .. ':' .. tostring(isCrafted)
 end
 
 local function StyleKey(itemLink)
@@ -320,14 +357,23 @@ local function StyleKey(itemLink)
     local functionalQuality = GetItemLinkFunctionalQuality(itemLink)
     local isCrafted = IsItemLinkCrafted(itemLink)
     local itemStyle = GetItemLinkItemStyle(itemLink)
-    return tostring(functionalQuality) .. ':' .. tostring(isCrafted) .. ':' .. tostring(itemStyle)
+    return tostring(functionalQuality)
+      .. ':' .. tostring(isCrafted)
+      .. ':' .. tostring(itemStyle)
   end
 end
 
 local function UpsideOutcomeKey(itemLink)
   local itemType = itemTypeVector[GetItemLinkItemType(itemLink)]
-  if itemType ~= 'style' then
+  if itemType ~= 'style' and itemType ~= 'raw' or itemType ~= 'material' then
     return itemType
+  end
+end
+
+local function MaterialOutcomeKey(itemLink)
+  local itemType = itemTypeVector[GetItemLinkItemType(itemLink)]
+  if itemType == 'raw' or itemType == 'material' then
+    return itemLink
   end
 end
 
@@ -346,18 +392,20 @@ function LibLootStats.ItemDeconstructionUpside(itemLink, getValue)
   if not Caches.baseProbabilityStats then
     Caches.baseProbabilityStats = MakeDeconstructionStatistic(UpsideKey, UpsideOutcomeKey)
   end
+  if not Caches.matProbabilityStats then
+    Caches.matProbabilityStats = MakeDeconstructionStatistic(MaterialKey, MaterialOutcomeKey)
+  end
   if not Caches.styleProbabilityStats then
     Caches.styleProbabilityStats = MakeDeconstructionStatistic(StyleKey, StyleOutcomeKey)
   end
 
   local outcome = {}
 
-  local expectations = Caches.baseProbabilityStats:GetValueByKey(UpsideKey(itemLink))
-  local expectedTypes = {}
-  if expectations then
-    outcome.baseSamples = expectations.samples
-    for _, row in ipairs(expectations) do
-      expectedTypes[row.item] = row.expected
+  local material = Caches.matProbabilityStats:GetValueByKey(MaterialKey(itemLink))
+  if material then
+    outcome.baseSamples = material.samples
+    for _, row in ipairs(material) do
+      table.insert(outcome, row)
     end
   end
 
@@ -374,6 +422,15 @@ function LibLootStats.ItemDeconstructionUpside(itemLink, getValue)
 
       byStyle = byStyle or 0.25
       table.insert(outcome, { item = item, expected = byStyle })
+    end
+  end
+
+  local expectations = Caches.baseProbabilityStats:GetValueByKey(UpsideKey(itemLink))
+  local expectedTypes = {}
+  if expectations then
+    outcome.qualitySamples = expectations.samples
+    for _, row in ipairs(expectations) do
+      expectedTypes[row.item] = row.expected
     end
   end
 

@@ -42,6 +42,12 @@ local function AddDeconPrice(tooltip, itemLink)
       end
       resultsLine = resultsLine .. "Style Samples: " .. expectation.styleSamples
     end
+    if expectation.qualitySamples then
+      if resultsLine ~= "" then
+        resultsLine = resultsLine .. "\n"
+      end
+      resultsLine = resultsLine .. "Quality Samples: " .. expectation.qualitySamples
+    end
     if resultsLine ~= "" then
       tooltip:AddLine(resultsLine, "ZoFontGameSmall")
     end
