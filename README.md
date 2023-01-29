@@ -9,7 +9,6 @@ Doesn't Track
 * Constructed Items
 * Excavation
 * Quest Items
-* Leads
 * Character, Race, Date/Time
 * Leveling Rewards
 * Long Term
