@@ -68,6 +68,11 @@ function ReticleTracker:CreateCurrentTarget()
     fishingLure = GetFishingLure()
   end
 
+  local antiquity
+  if additionalInteractInfo == ADDITIONAL_INTERACT_INFO_NONE and interaction == GetString("SI_GAMECAMERAACTIONTYPE", 27) then
+    antiquity = GetTrackedAntiquityId()
+  end
+
   local socialClass, blockedReason
   if additionalInteractInfo == ADDITIONAL_INTERACT_INFO_PICKPOCKET_CHANCE then
     local isInBonus, isHostile, percentChance, difficulty, isEmpty, prospectiveResult, monsterSocialClassString, monsterSocialClass = GetGameCameraPickpocketingBonusInfo()
@@ -103,6 +108,7 @@ function ReticleTracker:CreateCurrentTarget()
     additionalInteractInfo = additionalInteractInfo,
     questToolName = questToolName,
     fishingLure = fishingLure,
+    antiquity = antiquity,
     socialClass = socialClass,
     lockQuality = lockQuality
   }
@@ -154,6 +160,10 @@ function ReticleTracker:UpdateTarget(destination, source)
   if destination.blockedReason ~= source.blockedReason then
     LibLootStats.logger:Debug("blockedReason: ", destination.blockedReason, " => ", source.blockedReason)
     destination.blockedReason = source.blockedReason
+  end
+
+  if destination.antiquity ~= source.antiquity then
+    destination.antiquity = source.antiquity
   end
 
   if (destination.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_FISHING_NODE and source.additionalInteractInfo == ADDITIONAL_INTERACT_INFO_NONE) then

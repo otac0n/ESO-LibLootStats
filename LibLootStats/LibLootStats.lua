@@ -276,23 +276,30 @@ function LibLootStats:GetScenario()
   local interactable, interaction, context = nil, nil, {}
   if not nextRemovalIsUse then
     local target = self.reticleTracker.lastTarget
-    if target and target.active then
-      interactable, interaction = target.interactableName, lastDialogue or target.originalInteraction or target.interaction
-      if target.fishingLure then
-        context.lure = target.fishingLure
-        context.angler = SkillPointLevel(89)
-      elseif target.socialClass then
-        interactable = target.socialClass
-        context.cutpurse = SkillPointLevel(90)
-      elseif target.lockQuality then
-        context.lock = target.lockQuality
-        context.hunter = SkillPointLevel(79)
-      elseif lastDialogue then
-      else
-        context.harvest = SkillPointLevel(81)
-        context.homemaker = SkillPointLevel(91)
+    if target then
+      if target.active then
+        interactable, interaction = target.interactableName, lastDialogue or target.originalInteraction or target.interaction
+        if target.fishingLure then
+          context.lure = target.fishingLure
+          context.angler = SkillPointLevel(89)
+        elseif target.socialClass then
+          interactable = target.socialClass
+          context.cutpurse = SkillPointLevel(90)
+        elseif target.lockQuality then
+          context.lock = target.lockQuality
+          context.hunter = SkillPointLevel(79)
+        elseif lastDialogue then
+        else
+          context.harvest = SkillPointLevel(81)
+          context.homemaker = SkillPointLevel(91)
+        end
+      elseif SCENE_MANAGER.currentScene == ANTIQUITY_DIGGING_SCENE and target.antiquity then
+        interactable = "|LLS:lead:" .. target.antiquity .. "|"
+        interaction = target.interaction
       end
-      context.zoneId = GetZoneId(GetUnitZoneIndex("player"))
+      if interaction or interactable then
+        context.zoneId = GetZoneId(GetUnitZoneIndex("player"))
+      end
     end
   end
   return { source = interactable, action = interaction, context = context }
