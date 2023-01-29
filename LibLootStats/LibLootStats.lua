@@ -457,7 +457,8 @@ local function ParseContextKey(key)
   local e, l = 0, string.len(key)
   while e < l do
     local a, b, c = e, string.find(key, ":", e), string.find(key, ",", e + 1) or l + 1
-    context[string.sub(key, a + 1, b - 1)] = tonumber(string.sub(key, b + 1, c - 1))
+    local v = string.sub(key, b + 1, c - 1)
+    context[string.sub(key, a + 1, b - 1)] = tonumber(v) or v
     e = c
   end
   return context

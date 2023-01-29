@@ -152,15 +152,29 @@ local function CombineVariance(countA, averageA, M2a, countB, averageB, M2b)
 end
 Analysis.CombineVariance = CombineVariance
 
+local bonuses = {
+  [CRAFTING_TYPE_CLOTHIER] = 'cloth',
+  [CRAFTING_TYPE_BLACKSMITHING] = 'smith',
+  [CRAFTING_TYPE_WOODWORKING] = 'wood',
+  [CRAFTING_TYPE_JEWELRYCRAFTING] = 'jewel',
+  [CRAFTING_TYPE_ENCHANTING] = 'enchant',
+}
+Analysis.craftingTypeBonusContextKeys = bonuses
 local function MakeDeconstructionStatistic(sourceItemKey, outcomeItemKey)
   outcomeItemKey = outcomeItemKey or function (key) return key end
 
+  local function groupItemKey(itemLink, context)
+    if context[bonuses[GetItemLinkCraftingSkillType(itemLink)]] == 3 then
+      return sourceItemKey(itemLink)
+    end
+  end
+
   local function groupKey(scenarioKey)
     local scenario = Caches.LookupScenario(scenarioKey)
-    if scenario.sourceItems and scenario.action == GetString(SI_INTERACT_OPTION_UNIVERSAL_DECONSTRUCTION) then
+    if scenario.sourceItems and scenario.action == GetString(SI_INTERACT_OPTION_UNIVERSAL_DECONSTRUCTION) and scenario.context and scenario.context.meticulous == 1 then
       local anyHasCount, pattern = false, nil
       for _, pair in ipairs(scenario.sourceItems) do
-        local newPattern = sourceItemKey(pair.item)
+        local newPattern = groupItemKey(pair.item, scenario.context)
         if not newPattern then
           return nil
         end
