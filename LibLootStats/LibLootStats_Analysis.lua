@@ -3,6 +3,7 @@ local outcomes = {}
 local Caches = {
   scenarios = scenarios,
   outcomes = outcomes,
+  setIdBonusImpacts = {},
 }
 local Analysis = {
   Caches = Caches,
@@ -79,6 +80,36 @@ local function SimilarItemLinkPattern(itemLink)
   return "^" .. LibLootStats.MakeItemLink(parsed) .. "$"
 end
 Analysis.SimilarItemLinkPattern = SimilarItemLinkPattern
+
+local patterns = {
+  ["^Adds (%d+%%?) (.*)$"] = 2,
+}
+function Analysis.CountItemLinkSetBonusAttributeImpacts(itemLink)
+  local hasSet, setName, numBonuses, numNormalEquipped, maxEquipped, setId, numPerfectedEquipped = GetItemLinkSetInfo(itemLink, false)
+  if hasSet then
+    local impact = Caches.setIdBonusImpacts[setId]
+    if not impact then
+      local impact = {}
+      local unknown
+      for i = 1, numBonuses do
+        local numRequired, description, isPerfectedBonus = GetItemLinkSetBonusInfo(itemLink, false, i)
+        description = string.match(description, '^%(' .. numRequired .. ' items%) (.*)$') or description
+        for pattern, index in pairs(patterns) do
+          local match = {string.match(description, pattern)}
+          local key
+          if match[index] then
+            key = match[index]
+          else
+            key = description
+          end
+          impact[key] = (impact[key] or 0) + 1
+        end
+      end
+      Caches.setIdBonusImpacts[setId] = impact
+    end
+    return impact
+  end
+end
 
 local function IsItemLinkDeconstructable(itemLink)
   local itemType = itemTypeVector[GetItemLinkItemType(itemLink)]
