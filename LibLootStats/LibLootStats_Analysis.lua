@@ -81,33 +81,198 @@ local function SimilarItemLinkPattern(itemLink)
 end
 Analysis.SimilarItemLinkPattern = SimilarItemLinkPattern
 
-local patterns = {
-  ["^Adds (%d+%%?) (.*)$"] = 2,
-}
-function Analysis.CountItemLinkSetBonusAttributeImpacts(itemLink)
-  local hasSet, setName, numBonuses, numNormalEquipped, maxEquipped, setId, numPerfectedEquipped = GetItemLinkSetInfo(itemLink, false)
-  if hasSet then
-    local impact = Caches.setIdBonusImpacts[setId]
-    if not impact then
-      local impact = {}
-      local unknown
-      for i = 1, numBonuses do
-        local numRequired, description, isPerfectedBonus = GetItemLinkSetBonusInfo(itemLink, false, i)
-        description = string.match(description, '^%(' .. numRequired .. ' items%) (.*)$') or description
-        for pattern, index in pairs(patterns) do
-          local match = {string.match(description, pattern)}
-          local key
-          if match[index] then
-            key = match[index]
-          else
-            key = description
-          end
-          impact[key] = (impact[key] or 0) + 1
+local roleRules
+do
+  local tank = 'Tank'
+  local stmDPS = 'Stamina DPS'
+  local magDPS = 'Magicka DPS'
+  local stmHeal = 'Stamina Healer'
+  local magHeal = 'Magicka Healer'
+  local speed = 'Speed'
+  local thief = 'Thief'
+  local farm = 'Farming'
+
+  local function add(stat) return "^Adds (%d+%%?) " .. stat .. "$" end
+  local function gain(stat) return { "^Gain " .. stat, ", you gain " .. stat  } end
+  local function increase(stat) return { "increases? your " .. stat, "increasing your " .. stat } end
+  local function cost(stat) return "Reduces the cost of " .. stat end
+  local function apply(stat) return "apply " .. stat end
+  roleRules = {
+    {
+      patterns = {
+        add('Maximum Health'),
+        add('Health Recovery'),
+        add('Healing Taken'),
+        add('Critical Resistance'),
+        add('Armor'),
+        increase('Max Health'),
+        increase('Physical and Spell Resistance'),
+        gain('Major Toughness'),
+        gain('Minor Toughness'),
+        gain('Major Aegis'),
+        gain('Minor Aegis'),
+        gain('Meridia\'s Blessed Armor'),
+        'back to the attacker',
+      },
+      roles = { tank }
+    },
+    {
+      patterns = {
+        add('Critical Chance'),
+        add('Weapon and Spell Damage'),
+        increase('Critical Chance'),
+        increase('Critical Damage'),
+        increase('Weapon and Spell Critical'),
+        increase('Weapon and Spell Damage'),
+        gain('Minor Berserk'),
+      },
+      roles = { stmDPS, magDPS }
+    },
+    {
+      patterns = {
+        add('Healing Done'),
+        gain('Major Mending'),
+        gain('Minor Mending'),
+        apply('Major Lifesteal'),
+        apply('Minor Lifesteal'),
+        'Healing yourself or an [Aa]lly',
+        'you apply a damage shield',
+        'grant your target a damage shield',
+        'group members restore %d health',
+      },
+      roles = { stmHeal, magHeal }
+    },
+    {
+      patterns = {
+        add('Maximum Magicka'),
+        add('Magicka Recovery'),
+      },
+      roles = { magDPS, magHeal }
+    },
+    {
+      patterns = {
+        add('Maximum Stamina'),
+        add('Stamina Recovery'),
+      },
+      roles = { stmDPS, stmHeal }
+    },
+    {
+      patterns = {
+        'Dodge Roll',
+      },
+      roles = { tank, stmDPS, stmHeal }
+    },
+    {
+      patterns = {
+        add('Offensive Penetration'),
+        apply('Major Breach'),
+        apply('Minor Breach'),
+      },
+      roles = { tank, stmDPS, magDPS }
+    },
+    {
+      patterns = {
+        increase('Movement Speed'),
+      },
+      roles = { speed }
+    },
+    {
+      patterns = {
+        'Reduces the radius you can be detected',
+        'While you are crouching and not Bracing, you restore',
+        cost('Sneak'),
+      },
+      roles = { thief }
+    },
+    {
+      patterns = {
+        'you call a murder of crows around you',
+      },
+      roles = { farm }
+    },
+  }
+
+  for _, rule in pairs(roleRules) do
+    local patterns = {}
+    for _, pattern in ipairs(rule.patterns) do
+      if type(pattern) == "string" then
+        table.insert(patterns, pattern)
+      else
+        for _, p in ipairs(pattern) do
+          table.insert(patterns, p)
         end
       end
-      Caches.setIdBonusImpacts[setId] = impact
     end
-    return impact
+    rule.patterns = patterns
+  end
+end
+Analysis.roleRules = roleRules
+
+function Analysis.FindItemLinkSetRoleScores(itemLink)
+  local hasSet, setName, numBonuses, numNormalEquipped, maxEquipped, setId, numPerfectedEquipped = GetItemLinkSetInfo(itemLink, false)
+  if not hasSet then
+    return {
+      maxRequired = 0,
+      highScore = 0,
+    }
+  else
+    local schedules = {}
+    local maxRequired = 0
+    local unmatched = nil
+    for i = 1, numBonuses do
+      local numRequired, description, isPerfectedBonus = GetItemLinkSetBonusInfo(itemLink, false, i)
+
+      maxRequired = math.max(numRequired, maxRequired)
+
+      description = string.match(description, '^%(' .. numRequired .. ' items?%) (.*)$') or description
+      description = string.gsub(description, '|cffffff(%d*%.?%d+%%?)|r', '%1')
+
+      local roleMatches = {}
+      for _, rule in ipairs(roleRules) do
+        for _, pattern in ipairs(rule.patterns) do
+          if string.find(description, pattern) then
+            for _, role in ipairs(rule.roles) do
+              roleMatches[role] = true
+            end
+          end
+        end
+      end
+
+      local match = false
+      for role, _ in pairs(roleMatches) do
+        match = true
+        local schedule = schedules[role]
+        if not schedule then
+          schedule = {}
+          schedules[role] = schedule
+        end
+        schedule[numRequired] = (schedule[numRequired] or 0) + 1
+      end
+
+      if not match then
+        unmatched = unmatched or {}
+        table.insert(unmatched, description)
+      end
+    end
+    local highScore = 0
+    local scores = {}
+    for k, schedule in pairs(schedules) do
+      local total = 0
+      local score = 0
+      for i = 1, maxRequired do
+        total = total + (schedule[i] or 0)
+        score = math.max(score, total / i)
+      end
+      scores[k] = score
+      highScore = math.max(highScore, score)
+    end
+    return {
+      schedules = schedules,
+      maxRequired = maxRequired,
+      scores = scores,
+      highScore = highScore,
+      unmatched = unmatched,
+    }
   end
 end
 

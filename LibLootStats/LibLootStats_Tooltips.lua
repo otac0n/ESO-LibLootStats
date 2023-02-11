@@ -72,6 +72,33 @@ local function AddDeconPrice(tooltip, itemLink)
   end
 end
 
+local roleLabels = {
+  ['Thief'] = '|cccccccThief|r',
+  ['Speed'] = '|ccccc00Speed|r',
+  ['Farming'] = '|c00cc00Farming|r',
+}
+
+local function AddSetScores(tooltip, itemLink)
+  local s = itemLink and LibLootStats.Analysis.FindItemLinkSetRoleScores(itemLink)
+  if s.scores then
+    local resultsLine = ""
+    local q = s.unmatched and "?" or ""
+    local scores = {}
+    for role, score in pairs(s.scores) do
+      table.insert(scores, { role = role, score = score })
+    end
+    table.sort(scores, function (a, b) return a.score > b.score end)
+    for _, s in ipairs(scores) do
+      if resultsLine ~= "" then
+        resultsLine = resultsLine .. "\n"
+      end
+      resultsLine = resultsLine .. (roleLabels[s.role] or s.role) .. ": " .. round(s.score) .. q
+    end
+    tooltip:AddLine(resultsLine, "ZoFontGameSmall")
+    return true
+  end
+end
+
 local function AddSources(tooltip, itemLink)
   local s = itemLink and LibLootStats.Analysis.FindItemLinkSources(itemLink)
   if s then
@@ -146,6 +173,8 @@ EVENT_MANAGER:RegisterForEvent(LibLootStats.ADDON_NAME .. "Tooltips", EVENT_ADD_
       spacing = AddDeconPrice(tooltip, itemLink) or spacing
       if spacing then tooltip:AddVerticalPadding(8) end
       spacing = AddSources(tooltip, itemLink) or spacing
+      if spacing then tooltip:AddVerticalPadding(8) end
+      spacing = AddSetScores(tooltip, itemLink) or spacing
     end
   end
 
