@@ -14,7 +14,6 @@ end
 local function AddDeconPrice(tooltip, itemLink)
   local expectation = itemLink and LibLootStats:FindDeconstructionExpectation(itemLink, LibLootStats.Analysis.ItemSaleValue)
   if expectation then
-    tooltip:AddVerticalPadding(8)
     tooltip:AddLine("|t20:20:esoui/art/tutorial/inventory_trait_intricate_icon.dds|t Deconstruction Value: " .. (round(expectation.value) or "?") .. " |t18:18:esoui/art/currency/currency_gold_32.dds|t", "ZoFontGameLarge")
     local resultsLine = ""
     for _, pair in ipairs(expectation) do
