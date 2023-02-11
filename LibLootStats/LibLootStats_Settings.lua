@@ -85,16 +85,21 @@ function MakeQuantityStore(source, toKey, fromKey)
       GroupKey = groupKey,
     }
 
+    makeResult = makeResult or function (a) return a end
+
     function statistic:Increment(scenarioKey, count)
-      local groupKey = groupKey(scenarioKey)
-      if groupKey ~= nil then
-        local current = self.cache[groupKey]
-        if current then
-          current = accumulate(current, makeValue(scenarioKey, count))
-        else
-          current = makeValue(scenarioKey, count)
+      local groupKeys = groupKey(scenarioKey)
+      if type(groupKeys) ~= 'table' then groupKeys = {groupKeys} end
+      for _, groupKey in ipairs(groupKeys) do
+        if groupKey ~= nil then
+          local newValue = makeValue(scenarioKey, count, groupKey)
+          local current = self.cache[groupKey]
+          if current then
+            self.cache[groupKey] = accumulate(current, newValue)
+          else
+            self.cache[groupKey] = newValue
+          end
         end
-        self.cache[groupKey] = current
       end
     end
 
