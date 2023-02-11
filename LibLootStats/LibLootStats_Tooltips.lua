@@ -54,6 +54,35 @@ local function AddDeconPrice(tooltip, itemLink)
   end
 end
 
+local function AddBidAskSpread(tooltip, itemLink)
+  local price = itemLink and LibPrice and LibPrice.ItemLinkToBidAskSpread and LibPrice.ItemLinkToBidAskSpread(itemLink).gold
+  if price then
+    local resultsLine = ""
+    local bid = price.bid and price.bid.value
+    local sale = price.sale and price.sale.value
+    local ask = price.ask and price.ask.value
+    if bid then
+      resultsLine = resultsLine .. "Bid: " .. round(bid) .. " |t18:18:esoui/art/currency/currency_gold_32.dds|t"
+    end
+    if sale then
+      if resultsLine ~= "" then
+        resultsLine = resultsLine .. ", "
+      end
+      resultsLine = resultsLine .. "Sale: " .. round(sale) .. " |t18:18:esoui/art/currency/currency_gold_32.dds|t"
+    end
+    if ask then
+      if resultsLine ~= "" then
+        resultsLine = resultsLine .. ", "
+      end
+      resultsLine = resultsLine .. "Ask: " .. round(ask) .. " |t18:18:esoui/art/currency/currency_gold_32.dds|t"
+    end
+    if resultsLine ~= "" then
+      tooltip:AddLine(resultsLine, "ZoFontGameLarge")
+      return true
+    end
+  end
+end
+
 EVENT_MANAGER:RegisterForEvent(LibLootStats.ADDON_NAME .. "Tooltips", EVENT_ADD_ON_LOADED, function (eventCode, name)
   EVENT_MANAGER:UnregisterForEvent(LibLootStats.ADDON_NAME .. "Tooltips", EVENT_ADD_ON_LOADED)
 
@@ -63,6 +92,8 @@ EVENT_MANAGER:RegisterForEvent(LibLootStats.ADDON_NAME .. "Tooltips", EVENT_ADD_
       original(tooltip, ...)
       local itemLink = getItemLink(...)
       local spacing = false
+      spacing = AddBidAskSpread(tooltip, itemLink) or spacing
+      if spacing then tooltip:AddVerticalPadding(8) end
       spacing = AddDeconPrice(tooltip, itemLink) or spacing
     end
   end
