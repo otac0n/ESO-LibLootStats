@@ -166,9 +166,17 @@ local function MakeDeconstructionStatistic(sourceItemKey, outcomeItemKey)
   outcomeItemKey = outcomeItemKey or function (key) return key end
 
   local function groupItemKey(itemLink, context)
-    if context[bonuses[GetItemLinkCraftingSkillType(itemLink)]] == 3 then
-      return sourceItemKey(itemLink)
+    local skillType = GetItemLinkCraftingSkillType(itemLink)
+    if skillType == CRAFTING_TYPE_INVALID then
+      local itemType = itemTypeVector[GetItemLinkItemType(itemLink)]
+      if not (itemType == 'raw_style' or itemType == 'raw_trait') then
+        return
+      end
+    elseif context[bonuses[skillType]] ~= 3 then
+      return
     end
+
+    return sourceItemKey(itemLink)
   end
 
   local function groupKey(scenarioKey)
