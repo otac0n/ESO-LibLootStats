@@ -14,7 +14,26 @@ end
 local function AddDeconPrice(tooltip, itemLink)
   local expectation = itemLink and LibLootStats:FindDeconstructionExpectation(itemLink, LibLootStats.Analysis.ItemSaleValue)
   if expectation then
-    tooltip:AddLine("|t20:20:esoui/art/tutorial/inventory_trait_intricate_icon.dds|t Deconstruction Value: " .. (round(expectation.value) or "?") .. " |t18:18:esoui/art/currency/currency_gold_32.dds|t", "ZoFontGameLarge")
+    local value = expectation.value
+    local color = "|cffffff"
+    if value < LibLootStats.Analysis.ItemVendorValue(itemLink) then
+      color = "|cff0000"
+    else
+      local price = LibPrice and LibPrice.ItemLinkToBidAskSpread and LibPrice.ItemLinkToBidAskSpread(itemLink).gold
+      if price then
+        local bid = price.bid and price.bid.value
+        local sale = price.sale and price.sale.value
+        local ask = price.ask and price.ask.value
+        if ask and ask < value then
+          color = "|c00ee11"
+        elseif sale and sale < value then
+          color = "|cffff00"
+        elseif sale and sale > value then
+          color = "|cff8800"
+        end
+      end
+    end
+    tooltip:AddLine("|t20:20:esoui/art/tutorial/inventory_trait_intricate_icon.dds|t Deconstruction Value: " .. color .. (round(value) or "?") .. "|r |t18:18:esoui/art/currency/currency_gold_32.dds|t", "ZoFontGameLarge")
     local resultsLine = ""
     for _, pair in ipairs(expectation) do
       if resultsLine ~= "" then

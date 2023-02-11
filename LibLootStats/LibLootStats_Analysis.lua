@@ -339,6 +339,14 @@ local function MakeDeconstructionStatistic(sourceItemKey, outcomeItemKey)
 end
 Analysis.MakeDeconstructionStatistic = MakeDeconstructionStatistic
 
+function Analysis.ItemVendorValue(item)
+  local value = GetItemLinkValue(item)
+  if IsItemLinkStolen(item) then
+    value = value * 1.1
+  end
+  return value
+end
+
 function Analysis.ItemSaleValue(item)
   local value, laundry = GetItemLinkValue(item), 0
   if IsItemLinkStolen(item) then
