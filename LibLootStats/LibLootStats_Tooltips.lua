@@ -54,6 +54,37 @@ local function AddDeconPrice(tooltip, itemLink)
   end
 end
 
+local function AddSources(tooltip, itemLink)
+  local s = itemLink and LibLootStats.Analysis.FindItemLinkSources(itemLink)
+  if s then
+    local resultsLine = ""
+    local total = 0
+    local list = {}
+    for action, items in pairs(s) do
+      for item, count in pairs(items) do
+        total = total + count
+        table.insert(list, { action = action, item = item, count = count })
+      end
+    end
+    table.sort(list, function (a, b) return a.count > b.count end)
+    total = total / 100
+    local lines = 0
+    for _, pair in ipairs(list) do
+      if resultsLine ~= "" then
+        resultsLine = resultsLine .. "\n"
+        lines = lines + 1
+      end
+      if lines >= 9 then
+        resultsLine = resultsLine .. "…"
+        break
+      end
+      resultsLine = resultsLine .. round(pair.count / total) .. "% " .. pair.item .. " (" .. pair.action .. ") - " .. round(pair.count)
+    end
+    tooltip:AddLine(resultsLine, "ZoFontGameSmall")
+    return true
+  end
+end
+
 local function AddBidAskSpread(tooltip, itemLink)
   local price = itemLink and LibPrice and LibPrice.ItemLinkToBidAskSpread and LibPrice.ItemLinkToBidAskSpread(itemLink).gold
   if price then
@@ -95,6 +126,8 @@ EVENT_MANAGER:RegisterForEvent(LibLootStats.ADDON_NAME .. "Tooltips", EVENT_ADD_
       spacing = AddBidAskSpread(tooltip, itemLink) or spacing
       if spacing then tooltip:AddVerticalPadding(8) end
       spacing = AddDeconPrice(tooltip, itemLink) or spacing
+      if spacing then tooltip:AddVerticalPadding(8) end
+      spacing = AddSources(tooltip, itemLink) or spacing
     end
   end
 

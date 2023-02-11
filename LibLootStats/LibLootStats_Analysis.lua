@@ -111,6 +111,76 @@ function Analysis.CountItemLinkSetBonusAttributeImpacts(itemLink)
   end
 end
 
+local function MakeSourceStatistic(outcomeItemKey, makeValue, accumulate, makeResult)
+  local function groupKey(scenarioKey)
+    local scenario = Caches.LookupScenario(scenarioKey)
+    local keys = {}
+    for _, pair in ipairs(scenario.outcome) do
+      local itemKey = outcomeItemKey(pair.item)
+      if itemKey ~= nil then
+        keys[itemKey] = true
+      end
+    end
+    local groupKeys = {}
+    for k, _ in pairs(keys) do
+      table.insert(groupKeys, k)
+    end
+    return groupKeys
+  end
+
+  local function makeValueInner(scenarioKey, count, groupKey)
+    scenario = Caches.LookupScenario(scenarioKey)
+    return makeValue(scenario, count, groupKey)
+  end
+
+  return LibLootStats.data.scenarios:AddStatistic(groupKey, makeValueInner, accumulate, makeResult)
+end
+Analysis.MakeSourceStatistic = MakeSourceStatistic
+
+function Analysis.FindItemLinkSources(itemLink)
+  if not Caches.itemSources then
+    Caches.itemSources = MakeSourceStatistic(
+      function (itemLink) return itemLink end,
+      function (scenario, count, itemLink)
+        local outcomeCount = 0
+        for _, pair in ipairs(scenario.outcome) do
+          if pair.item == itemLink then
+            outcomeCount = outcomeCount + pair.count
+          end
+        end
+        local sourceItems = scenario.sourceItems or { { item = scenario.source, count = 1 } }
+        local sourceCount = 0
+        for _, sourceItem in ipairs(sourceItems) do
+          sourceCount = sourceCount + sourceItem.count
+        end
+
+        local result = {}
+        if sourceCount > 0 then
+          for _, sourceItem in ipairs(sourceItems) do
+            result[sourceItem.item] = (result[sourceItem.item] or 0) + (sourceItem.count / sourceCount) * count
+          end
+        end
+        return {
+          [scenario.action] = result
+        }
+      end,
+      function (a, b)
+        for action, bItems in pairs(b) do
+          local aItems = a[action]
+          if aItems then
+            for item, count in pairs(bItems) do
+              aItems[item] = (aItems[item] or 0) + count
+            end
+          else
+            a[action] = bItems
+          end
+        end
+        return a
+      end)
+  end
+  return Caches.itemSources:GetValueByKey(itemLink)
+end
+
 local function IsItemLinkDeconstructable(itemLink)
   local itemType = itemTypeVector[GetItemLinkItemType(itemLink)]
   if itemType then
