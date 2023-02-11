@@ -61,7 +61,9 @@ EVENT_MANAGER:RegisterForEvent(LibLootStats.ADDON_NAME .. "Tooltips", EVENT_ADD_
     local original = tooltip[name]
     tooltip[name] = function(tooltip, ...)
       original(tooltip, ...)
-      AddDeconPrice(tooltip, getItemLink(...))
+      local itemLink = getItemLink(...)
+      local spacing = false
+      spacing = AddDeconPrice(tooltip, itemLink) or spacing
     end
   end
 
