@@ -65,13 +65,22 @@ EVENT_MANAGER:RegisterForEvent(LibLootStats.ADDON_NAME .. "Tooltips", EVENT_ADD_
     end
   end
 
+  local identity = function (itemLink) return itemLink end
+
+  HookToolTip(PopupTooltip, "SetLink", identity)
+
+  HookToolTip(ZO_SmithingTopLevelCreationPanelResultTooltip, "SetPendingSmithingItem", GetSmithingPatternResultLink)
+
   HookToolTip(ItemTooltip, "SetBagItem", GetItemLink)
   HookToolTip(ItemTooltip, "SetWornItem", function (equipSlot) return GetItemLink(BAG_WORN, equipSlot) end)
+  HookToolTip(ItemTooltip, "SetLootItem", GetLootItemLink)
+  HookToolTip(ItemTooltip, "SetLink", identity)
+  HookToolTip(ItemTooltip, "SetAttachedMailItem", GetAttachedItemLink)
+  HookToolTip(ItemTooltip, "SetBuybackItem", GetBuybackItemLink)
   HookToolTip(ItemTooltip, "SetTradeItem", GetTradeItemLink)
   HookToolTip(ItemTooltip, "SetStoreItem", GetStoreItemLink)
-  HookToolTip(ItemTooltip, "SetBuybackItem", GetBuybackItemLink)
-  HookToolTip(ItemTooltip, "SetLootItem", GetLootItemLink)
-  HookToolTip(ItemTooltip, "SetAttachedMailItem", GetAttachedItemLink)
+  HookToolTip(ItemTooltip, "SetQuestReward", GetQuestRewardItemLink)
+  HookToolTip(ItemTooltip, "SetTradingHouseListing", GetTradingHouseListingItemLink)
 
   if AwesomeGuildStore then
     AwesomeGuildStore:RegisterCallback(AwesomeGuildStore.callback.AFTER_INITIAL_SETUP, function ()
@@ -80,8 +89,4 @@ EVENT_MANAGER:RegisterForEvent(LibLootStats.ADDON_NAME .. "Tooltips", EVENT_ADD_
   else
     HookToolTip(ItemTooltip, "SetTradingHouseItem", GetTradingHouseSearchResultItemLink)
   end
-
-  HookToolTip(ItemTooltip, "SetTradingHouseListing", GetTradingHouseListingItemLink)
-  HookToolTip(ItemTooltip, "SetQuestReward", GetQuestRewardItemLink)
-  HookToolTip(PopupTooltip, "SetLink", function (itemLink) return itemLink end)
 end)
