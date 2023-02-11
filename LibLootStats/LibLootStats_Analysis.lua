@@ -119,8 +119,10 @@ local function IsItemLinkDeconstructable(itemLink)
 
   local craftingType = GetItemLinkCraftingSkillType(itemLink)
   if craftingType ~= CRAFTING_TYPE_INVALID and craftingType ~= CRAFTING_TYPE_ALCHEMY and craftingType ~= CRAFTING_TYPE_PROVISIONING then
-    if not ZO_ItemFilterUtils.IsFilterDataInItemTypeDisplayCategory({GetItemLinkFilterTypeInfo(itemLink)}, ITEMFILTERTYPE_COMPANION) then
-      return true
+    if not ZO_IsElementInNumericallyIndexedTable({GetItemLinkFilterTypeInfo(itemLink)}, ITEMFILTERTYPE_COMPANION) then
+      if GetItemLinkValue(itemLink) ~= 500 then -- Exemplary
+        return true
+      end
     end
   end
   return false
