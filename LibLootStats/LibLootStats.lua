@@ -118,6 +118,7 @@ local itemIdVector = {
   [64710]  = setCrownItem123,    -- Crown Tri-Restoration Potion
   [64711]  = setCrownItem123,    -- Crown Fortifying Meal
   [79690]  = setCrownItem6,      -- Crown Lethal Poison
+  [94440]  = setCrownItemScroll, -- Major Gold Coast Experience Scroll
   [94441]  = setCrownItemScroll, -- Grand Gold Coast Experience Scroll
   [125450] = setCrownItemScroll, -- Instant Blacksmithing Research
   [125464] = setCrownItemScroll, -- Instant Clothing Research
