@@ -22,7 +22,7 @@ local itemTypeVector = {
   [ITEMTYPE_ENCHANTING_RUNE_ASPECT] = 'aspect',
   [ITEMTYPE_ENCHANTING_RUNE_ESSENCE] = 'essence',
   [ITEMTYPE_ENCHANTING_RUNE_POTENCY] = 'potency',
-  [ITEMTYPE_FURNISHING_MATERIAL] = 'material',
+  [ITEMTYPE_FURNISHING_MATERIAL] = 'furnishing_material',
   [ITEMTYPE_JEWELRYCRAFTING_BOOSTER] = 'improvement',
   [ITEMTYPE_JEWELRYCRAFTING_RAW_BOOSTER] = 'raw_improvement',
   [ITEMTYPE_JEWELRYCRAFTING_MATERIAL] = 'material',
@@ -356,7 +356,10 @@ local function IsItemLinkDeconstructable(itemLink)
   if craftingType ~= CRAFTING_TYPE_INVALID and craftingType ~= CRAFTING_TYPE_ALCHEMY and craftingType ~= CRAFTING_TYPE_PROVISIONING then
     if not ZO_IsElementInNumericallyIndexedTable({GetItemLinkFilterTypeInfo(itemLink)}, ITEMFILTERTYPE_COMPANION) then
       if GetItemLinkValue(itemLink) ~= 500 then -- Exemplary
-        return true
+        local flags = tonumber(LibLootStats.ParseItemLink(itemLink)[16])
+        if BitAnd(flags, 256) == 0 then
+          return true
+        end
       end
     end
   end
