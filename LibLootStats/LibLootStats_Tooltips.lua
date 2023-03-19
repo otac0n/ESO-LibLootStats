@@ -7,7 +7,7 @@ local function round(value)
     elseif abs < 40 then
       scale = 0.1
     end
-    return math.floor(value / scale + 0.5) * scale
+    return zo_roundToNearest(value, scale)
   end
 end
 
@@ -143,21 +143,21 @@ local function AddPriceInfo(tooltip, itemLink)
       ask = price.ask and price.ask.value
     end
     if bid and bid > value then
-      resultsLine = resultsLine .. "Bid: " .. round(bid) .. " |t16:16:esoui/art/currency/currency_gold_32.dds|t"
+      resultsLine = resultsLine .. "Bid: " .. ZO_Currency_FormatPlatform(CURT_MONEY, round(bid), ZO_CURRENCY_FORMAT_AMOUNT_ICON)
     elseif value > 0 then
-      resultsLine = resultsLine .. "Vendor: " .. round(value) .. " |t16:16:esoui/art/currency/currency_gold_32.dds|t"
+      resultsLine = resultsLine .. "Vendor: " .. ZO_Currency_FormatPlatform(CURT_MONEY, round(value), ZO_CURRENCY_FORMAT_AMOUNT_ICON)
     end
     if sale then
       if resultsLine ~= "" then
         resultsLine = resultsLine .. ", "
       end
-      resultsLine = resultsLine .. "Sale: " .. round(sale) .. " |t16:16:esoui/art/currency/currency_gold_32.dds|t"
+      resultsLine = resultsLine .. "Sale: " .. ZO_Currency_FormatPlatform(CURT_MONEY, round(sale), ZO_CURRENCY_FORMAT_AMOUNT_ICON)
     end
     if ask then
       if resultsLine ~= "" then
         resultsLine = resultsLine .. ", "
       end
-      resultsLine = resultsLine .. "Ask: " .. round(ask) .. " |t16:16:esoui/art/currency/currency_gold_32.dds|t"
+      resultsLine = resultsLine .. "Ask: " .. ZO_Currency_FormatPlatform(CURT_MONEY, round(ask), ZO_CURRENCY_FORMAT_AMOUNT_ICON)
     end
     if resultsLine ~= "" then
       tooltip:AddLine(resultsLine, "ZoFontGameSmall")
