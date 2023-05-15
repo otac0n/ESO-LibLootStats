@@ -12,7 +12,7 @@ local function round(value)
 end
 
 local function AddDeconPrice(tooltip, itemLink)
-  local expectation = itemLink and LibLootStats:FindDeconstructionExpectation(itemLink, LibLootStats.Analysis.ItemSaleValue)
+  local expectation = LibLootStats:FindDeconstructionExpectation(itemLink, LibLootStats.Analysis.ItemSaleValue)
   if expectation then
     local value = expectation.value
     local color = "|cffffff"
@@ -74,7 +74,7 @@ local function AddDeconPrice(tooltip, itemLink)
 end
 
 local function AddSources(tooltip, itemLink)
-  local s = itemLink and LibLootStats.Analysis.FindItemLinkSources(itemLink)
+  local s = LibLootStats.Analysis.FindItemLinkSources(itemLink)
   if s then
     local resultsLine = ""
     local total = 0
@@ -106,7 +106,7 @@ end
 
 local function AddPriceInfo(tooltip, itemLink)
   local value = GetItemLinkValue(itemLink)
-  local price = itemLink and LibPrice and LibPrice.ItemLinkToBidAskSpread and LibPrice.ItemLinkToBidAskSpread(itemLink).gold
+  local price = LibPrice and LibPrice.ItemLinkToBidAskSpread and LibPrice.ItemLinkToBidAskSpread(itemLink).gold
   if price or value > 0 then
     local resultsLine = ""
     local bid, sale, ask
@@ -147,12 +147,14 @@ EVENT_MANAGER:RegisterForEvent(LibLootStats.ADDON_NAME .. "Tooltips", EVENT_ADD_
       original(tooltip, ...)
       local itemLink = getItemLink(...)
 
-      AddPriceInfo(tooltip, itemLink)
+      if itemLink then
+        AddPriceInfo(tooltip, itemLink)
 
-      local spacing = false
-      spacing = AddDeconPrice(tooltip, itemLink) or spacing
-      if spacing then tooltip:AddVerticalPadding(8) end
-      spacing = AddSources(tooltip, itemLink) or spacing
+        local spacing = false
+        spacing = AddDeconPrice(tooltip, itemLink) or spacing
+        if spacing then tooltip:AddVerticalPadding(8) end
+        spacing = AddSources(tooltip, itemLink) or spacing
+      end
     end
   end
 
@@ -172,6 +174,17 @@ EVENT_MANAGER:RegisterForEvent(LibLootStats.ADDON_NAME .. "Tooltips", EVENT_ADD_
   HookToolTip(ItemTooltip, "SetStoreItem", GetStoreItemLink)
   HookToolTip(ItemTooltip, "SetQuestReward", GetQuestRewardItemLink)
   HookToolTip(ItemTooltip, "SetTradingHouseListing", GetTradingHouseListingItemLink)
+  HookToolTip(ItemTooltip, "SetCrownCrateReward", GetCrownCrateRewardItemLink)
+  HookToolTip(ItemTooltip, "SetQuestItem", GetQuestItemLink)
+  HookToolTip(ItemTooltip, "SetQuestTool", GetQuestToolLink)
+  HookToolTip(ItemTooltip, "SetReward", GetItemRewardItemLink)
+  HookToolTip(ItemTooltip, "SetDailyLoginRewardEntry", function (day)
+    local rewardId, count, isMilestone = GetDailyLoginRewardInfoForCurrentMonth(day)
+    local entryType = GetRewardType(rewardId)
+    if entryType == REWARD_ENTRY_TYPE_ITEM then
+      return GetItemRewardItemLink(rewardId, count)
+    end
+  end)
 
   if AwesomeGuildStore then
     AwesomeGuildStore:RegisterCallback(AwesomeGuildStore.callback.AFTER_INITIAL_SETUP, function ()
