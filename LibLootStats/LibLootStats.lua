@@ -28,6 +28,7 @@ function LibLootStats:InitializeHooks()
   EVENT_MANAGER:RegisterForEvent(namespace, EVENT_ANTIQUITY_LEAD_ACQUIRED, self.utils.Bind(self, self.OnAntiquityLeadAcquired))
   ZO_PreHook("ZO_MailInboxShared_TakeAll", self.utils.Bind(self, self.OnMailTakeAll))
   ZO_PreHook("ClaimCurrentDailyLoginReward", self.utils.Bind(self, self.OnClaimCurrentDailyLoginReward))
+  ZO_PreHook("ClaimPendingLevelUpReward", self.utils.Bind(self, self.OnClaimPendingLevelUpReward))
   ZO_PreHook(SCENE_MANAGER, "OnSceneStateChange", self.utils.Closure(self, self.OnSceneStateChanged))
   ZO_PreHook(SYSTEMS:GetObject("loot"), "UpdateLootWindow", self.utils.Closure(self, self.OnUpdateLootWindow))
   ZO_PreHook(ZO_InteractionManager, "SelectChatterOptionByIndex", self.utils.Closure(self, self.OnSelectChatterOptionByIndex))
@@ -248,6 +249,57 @@ function LibLootStats:OnClaimCurrentDailyLoginReward()
         context = {}
       }
       self.activeSources:AddTransientSource("reward", scenario, { save = true, delay = 7000, items = { [1] = { item = itemLink, count = count } } })
+    end
+  end
+end
+
+local function GetRewardIdSelectedChoice(rewardId, quantity)
+  local entryType = GetRewardType(rewardId)
+  if entryType == REWARD_ENTRY_TYPE_ITEM then
+    return rewardId, quantity
+  elseif entryType == REWARD_ENTRY_TYPE_CHOICE then
+    local choiceListId = GetChoiceRewardListId(rewardId)
+    local numChoices = GetNumRewardListEntries(choiceListId)
+    for choiceIndex = 1, numChoices do
+      local choiceRewardId, choiceEntryType, choiceQuantity = GetRewardListEntryInfo(choiceListId, choiceIndex)
+      if choiceEntryType == REWARD_ENTRY_TYPE_ITEM and IsLevelUpRewardChoiceSelected(rewardId, choiceRewardId) then
+        return choiceRewardId, choiceQuantity
+      end
+    end
+  --elseif entryType == REWARD_ENTRY_TYPE_ADD_CURRENCY then
+  --elseif entryType == REWARD_ENTRY_TYPE_EXPERIENCE then
+  --elseif entryType == REWARD_ENTRY_TYPE_SKILL_LINE_EXPERIENCE then
+  --elseif entryType == REWARD_ENTRY_TYPE_COLLECTIBLE then
+  --elseif entryType == REWARD_ENTRY_TYPE_INSTANT_UNLOCK then
+  --elseif entryType == REWARD_ENTRY_TYPE_LOOT_CRATE then
+  --elseif entryType == REWARD_ENTRY_TYPE_TRIBUTE_CARD_UPGRADE then
+  end
+end
+
+local function GetSelectedRewardId(rewardLevel, rewardIndex)
+  local rewardId, quantity = GetRewardInfoForLevel(rewardLevel, rewardIndex)
+  if rewardId then
+    return GetRewardIdSelectedChoice(rewardId, quantity)
+  end
+end
+
+function LibLootStats:OnClaimPendingLevelUpReward()
+  local rewardLevel = ZO_LEVEL_UP_REWARDS_MANAGER:GetPendingRewardLevel()
+  if rewardLevel then
+    local numRewards = GetNumRewardsForLevel(rewardLevel)
+    local items = {}
+    for rewardIndex = 1, numRewards do
+      local rewardId, quantity = GetSelectedRewardId(rewardLevel, rewardIndex)
+      if rewardId then
+        table.insert(items, { item = CanonicalizeItemLink(GetItemRewardItemLink(rewardId, quantity)), count = quantity })
+      end
+    end
+    if #items > 0 then
+      local scenario = {
+        source = zo_strformat(SI_LEVEL_UP_REWARDS_HEADER, rewardLevel),
+        action = GetString(SI_LEVEL_UP_REWARDS_KEYBOARD_CLAIM_REWARDS_BUTTON),
+      }
+      self.activeSources:AddTransientSource("levelup", scenario, { save = true, delay = 7000, items = items })
     end
   end
 end
